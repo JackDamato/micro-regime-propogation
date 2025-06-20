@@ -1,0 +1,161 @@
+@startuml MicroRegime Module 1 - Complete Architecture
+
+' Enable skinparam for better styling
+skinparam classAttributeIconSize 0
+skinparam classFontStyle bold
+skinparam classBackgroundColor #F9F9F9
+skinparam classBorderColor #333333
+skinparam packageBackgroundColor #E8E8E8
+skinparam packageBorderColor #666666
+skinparam packageFontStyle bold
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 100
+
+' Define packages with proper grouping
+package "Market Data Layer" as data {
+    class MarketEvent {
+        +timestamp_ns: uint64_t
+        +instrument: string
+        +action: char
+        +side: char
+        +price: double
+        +size: int
+        +order_id: uint64_t
+        +flags: uint8_t
+        +instrument_id: uint32_t
+        +channel_id: uint8_t
+        +sequence: uint32_t
+    }
+
+    class DbnMboReader {
+        +DbnMboReader(filepath: string, instrument: string)
+        +has_next(): bool
+        +next_event(): MarketEvent
+        +instrument_id(): string
+        +event_count(): size_t
+    }
+}
+
+package "Order Management" as order {
+    class OrderBookManager {
+        +ApplyAdd(order_id: uint64_t, price: double, size: int, side: BookSide): void
+        +ApplyModify(order_id: uint64_t, new_price: double, new_size: int): void
+        +ApplyCancel(order_id: uint64_t, canceled_size: int): void
+        +ApplyClear(): void
+        +GetTopLevels(levels: int): L3Snapshot
+        +CalculateMetrics(): OrderBookMetrics
+    }
+
+    class OrderEngine {
+        +process_event(event: MarketEvent, feature_engine: FeatureEngine*): void
+        +get_order_book(instrument: string): const OrderBookManager&
+        +get_order_books(): const auto&
+        +current_timestamp(): uint64_t
+        +reset(): void
+        +get_order_info(order_id: uint64_t): std::optional<OrderInfo>
+    }
+
+    class OrderBookMetrics {
+        +bid_ask_spread: double
+        +weighted_mid_price: double
+        +order_imbalance: double
+        +calculate_metrics(book: OrderBookManager): OrderBookMetrics
+    }
+}
+
+package "Feature Engineering" as feature {
+    class FeatureEngine {
+        +FeatureEngine(order_book: OrderBookManager&)
+        +generate_snapshot(event_type: EventType): FeatureInputSnapshot
+        +update_trade(price: double, size: double, direction: int8_t): void
+        +update_rolling_state(): void
+        +reset(): void
+        +calculate_features(): FeatureSet
+    }
+
+    class FeatureInputSnapshot {
+        +timestamp: uint64_t
+        +event_type: EventType
+        +price_features: array<double>
+        +volume_features: array<double>
+        +order_flow: array<double>
+    }
+
+    class FeatureSet {
+        +price_features: PriceFeatures
+        +volume_features: VolumeFeatures
+        +order_flow: OrderFlowFeatures
+        +to_vector(): vector<double>
+    }
+}
+
+package "Data Processing" as processing {
+    class MarketDataProcessor {
+        +add_data_source(source: DataSource*): void
+        +process(): void
+        +start(): void
+        +stop(): void
+        +register_handler(handler: EventHandler*): void
+    }
+
+    class DataSource {
+        +get_next_event(): optional<MarketEvent>
+        +has_more_events(): bool
+        +reset(): void
+    }
+
+    class EventHandler {
+        +handle_event(event: const MarketEvent&): void
+        +on_complete(): void
+    }
+}
+
+' Define relationships
+DbnMboReader --> MarketEvent : produces >
+MarketDataProcessor --> DataSource : uses >
+MarketDataProcessor --> EventHandler : notifies >
+OrderEngine ..|> EventHandler : implements
+OrderEngine --> OrderBookManager : maintains >
+OrderEngine --> FeatureEngine : updates >
+OrderEngine --> MarketEvent : processes >
+FeatureEngine --> OrderBookManager : observes >
+FeatureEngine --> FeatureInputSnapshot : generates >
+FeatureEngine --> FeatureSet : produces >
+OrderBookManager --> OrderBookMetrics : calculates >
+
+' Add notes
+note right of MarketEvent
+  Core data structure representing
+  market events with nanosecond
+  precision timing
+end note
+
+note bottom of OrderBookManager
+  Maintains full order book state
+  with support for L3 operations
+  and snapshot generation
+end note
+
+note left of FeatureEngine
+  Computes real-time features
+  including price, volume, and
+  order flow metrics
+end note
+
+note top of MarketDataProcessor
+  Coordinates the entire pipeline
+  from data ingestion through
+  feature generation
+end note
+
+' Add legend
+legend right
+  == Legend ==
+  -- Data Flow -->
+  -- Control Flow ..>
+  -- Implementation ..|>
+end legend
+
+@enduml

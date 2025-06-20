@@ -1,0 +1,10 @@
+# MicroRegime Project
+
+# Build Outputs
+build/
+
+# Data files
+data/
+
+# Databento folder
+databento-cpp/

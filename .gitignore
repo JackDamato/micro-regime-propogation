@@ -4,7 +4,7 @@
 build/
 
 # Data files
-data/
-
+ES/
+SPY/
 # Databento folder
 databento-cpp/

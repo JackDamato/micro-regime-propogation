@@ -37,15 +37,12 @@ protected:
     void print_snapshot(const FeatureInputSnapshot& snapshot, size_t snapshot_num) {
         std::cout << "\n=== Snapshot #" << snapshot_num << " ===\n";
         std::cout << "Timestamp: " << snapshot.timestamp_ns << " ns\n";
-        std::cout << "Event Type: " << static_cast<int>(snapshot.event_type) << "\n";
-        std::cout << "Quote Update Count: " << snapshot.quote_update_count << "\n";
+        // std::cout << "Quote Update Count: " << snapshot.quote_update_count << "\n";
     
         // Top of Book
         std::cout << "\nTop of Book:\n";
-        std::cout << "  Bid: " << snapshot.best_bid_price 
-                  << " x " << snapshot.best_bid_size << "\n";
-        std::cout << "  Ask: " << snapshot.best_ask_price 
-                  << " x " << snapshot.best_ask_size << "\n";
+        std::cout << "  Bid: " << snapshot.best_bid_price << "\n";
+        std::cout << "  Ask: " << snapshot.best_ask_price << "\n";
     
         // Depth
         std::cout << "\nDepth Levels (Top " << DEPTH_LEVELS << "):\n";
@@ -63,22 +60,33 @@ protected:
         std::cout << "\nRolling Stats (last " << ROLLING_WINDOW << " events):\n";
         std::cout << "  Buy Volume: " << snapshot.rolling_buy_volume << "\n";
         std::cout << "  Sell Volume: " << snapshot.rolling_sell_volume << "\n";
-        std::cout << "  Add Count: " << snapshot.rolling_add_count << "\n";
-        std::cout << "  Cancel Count: " << snapshot.rolling_cancel_count << "\n";
-    
-        std::cout << "  Rolling Midprices: [";
-        std::copy(snapshot.rolling_midprices.begin(), snapshot.rolling_midprices.end() - 1, std::ostream_iterator<double>(std::cout, ", "));
-        std::cout << snapshot.rolling_midprices.back() << "]\n";
-    
-        std::cout << "  Rolling Spreads: [";
-        std::copy(snapshot.rolling_spreads.begin(), snapshot.rolling_spreads.end() - 1, std::ostream_iterator<double>(std::cout, ", "));
-        std::cout << snapshot.rolling_spreads.back() << "]\n";
-    
-        std::cout << "  Tick Directions: [";
-        std::copy(snapshot.rolling_tick_directions.begin(), snapshot.rolling_tick_directions.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
-        std::cout << static_cast<int>(snapshot.rolling_tick_directions.back()) << "]\n";
+        std::cout << "  Adds Since Last Snapshot: " << snapshot.adds_since_last_snapshot << "\n";
 
+
+        // std::cout << "  Rolling Midprices: [";
+        // std::copy(snapshot.rolling_midprices.begin(), snapshot.rolling_midprices.end() - 1, std::ostream_iterator<double>(std::cout, ", "));
+        // std::cout << snapshot.rolling_midprices.back() << "]\n";
     
+        // std::cout << "  Rolling Spreads: [";
+        // std::copy(snapshot.rolling_spreads.begin(), snapshot.rolling_spreads.end() - 1, std::ostream_iterator<double>(std::cout, ", "));
+        // std::cout << snapshot.rolling_spreads.back() << "]\n";
+    
+        // std::cout << "  Tick Directions: [";
+        // std::copy(snapshot.rolling_tick_directions.begin(), snapshot.rolling_tick_directions.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
+        // std::cout << static_cast<int>(snapshot.rolling_tick_directions.back()) << "]\n";
+
+        // std::cout << "  Trade Directions: [";
+        // std::copy(snapshot.rolling_trade_directions.begin(), snapshot.rolling_trade_directions.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
+        // std::cout << static_cast<int>(snapshot.rolling_trade_directions.back()) << "]\n";
+
+        std::cout << "  Bid Depth Change Directions: [";
+        std::copy(snapshot.bid_depth_change_direction.begin(), snapshot.bid_depth_change_direction.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
+        std::cout << static_cast<int>(snapshot.bid_depth_change_direction.back()) << "]\n";
+
+        std::cout << "  Ask Depth Change Directions: [";
+        std::copy(snapshot.ask_depth_change_direction.begin(), snapshot.ask_depth_change_direction.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
+        std::cout << static_cast<int>(snapshot.ask_depth_change_direction.back()) << "]\n";
+        
         // Trade info
         std::cout << "\nLast Trade: ";
         if (snapshot.last_trade_size > 0) {
@@ -125,10 +133,9 @@ TEST_F(MarketDataPipelineTest, FullPipelineTest) {
             FeatureInputSnapshot snapshot;
             
             // Generate snapshot using FeatureEngine
-            snapshot = feature_engine.generate_snapshot(EventType::QUOTE_UPDATE);
+            snapshot = feature_engine.generate_snapshot();
             snapshot_count++;
             print_snapshot(snapshot, snapshot_count);
-            feature_engine.reset();
         }
     }
     

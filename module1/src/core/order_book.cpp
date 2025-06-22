@@ -107,7 +107,7 @@ void OrderBookManager::ApplyCancel(uint64_t order_id, int canceled_size) {
     
     // No return value needed as per header declaration
 }
-
+ 
 void OrderBookManager::ApplyClear() {
     bid_book_.clear();
     ask_book_.clear();
@@ -226,22 +226,35 @@ void OrderBookManager::build_snapshot(BookSide side, const auto& book,
     }
 }
 
-void OrderBookManager::compute_delta(const std::array<PriceLevel, DEPTH_LEVELS>& old_levels,
-                                    const std::array<PriceLevel, DEPTH_LEVELS>& new_levels,
-                                    std::array<int8_t, DEPTH_LEVELS>& delta) const {
+void OrderBookManager::compute_delta(
+    const std::array<PriceLevel, DEPTH_LEVELS>& old_levels,
+    const std::array<PriceLevel, DEPTH_LEVELS>& new_levels,
+    std::array<int8_t, DEPTH_LEVELS>& delta
+) const {
     for (size_t i = 0; i < DEPTH_LEVELS; ++i) {
-        if (std::abs(new_levels[i].price - old_levels[i].price) < 1e-10) {
-            // Same price level, compare sizes
-            if (new_levels[i].size > old_levels[i].size) {
-                delta[i] = 1;
-            } else if (new_levels[i].size < old_levels[i].size) {
-                delta[i] = -1;
+        double old_price = old_levels[i].price;
+        double new_price = new_levels[i].price;
+        int old_size = old_levels[i].size;
+        int new_size = new_levels[i].size;
+
+        if (std::abs(new_price - old_price) < 1e-10) {
+            // Same price level: compare sizes
+            if (new_size > old_size) {
+                delta[i] = 1;   // Added liquidity
+            } else if (new_size < old_size) {
+                delta[i] = -1;  // Removed liquidity
             } else {
-                delta[i] = 0;
+                delta[i] = 0;    // No change
             }
         } else {
-            // Price level changed, consider it as a new/different level
-            delta[i] = (new_levels[i].size > 0) ? 1 : -1;
+            // Price level changed
+            if (new_size == old_size) {
+                delta[i] = 0;   // Assume shift without net liquidity change
+            } else if (new_size > old_size) {
+                delta[i] = 1;   // Net add at new level
+            } else {
+                delta[i] = -1;  // Net remove
+            }
         }
     }
 }

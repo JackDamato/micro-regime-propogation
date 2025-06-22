@@ -6,5 +6,6 @@ build/
 # Data files
 ES/
 SPY/
+
 # Databento folder
 databento-cpp/

@@ -39,7 +39,7 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
     current_timestamp_ = event.timestamp_ns;
     
     auto& order_book = get_or_create_order_book(event.instrument);
-    
+    feature_engine->most_recent_timestamp_ns = event.timestamp_ns;
     try {
         switch (event.action) {
             case 'A': {  // Add
@@ -90,6 +90,7 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
             case 'R': { // Clear
                 order_book.Reset();
                 feature_engine->reset();
+                std::cout << "Clear event received" << std::endl;
                 break;
             }
             case 'T': {  // Trade

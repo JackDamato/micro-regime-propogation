@@ -2,6 +2,7 @@
 add_executable(module1_tests 
     test_dbn_reader.cpp
     test_pipeline.cpp
+    bench_dbn_reader.cpp
 )
 
 # Link with our module and GTest

@@ -3,8 +3,9 @@
 #include <unordered_map>
 #include <array>
 #include <cstddef>
+#include <string>
 
-namespace microregime {
+namespace features {
 
 struct FeatureSet {
     uint64_t timestamp_ns;
@@ -12,8 +13,6 @@ struct FeatureSet {
 
     // --- Price & Spread
     double log_spread;
-    double midprice;
-    double microprice;
     double price_impact;
     double log_return;
 
@@ -27,8 +26,6 @@ struct FeatureSet {
     double ofi;
     double signed_volume_pressure;
     double order_arrival_rate;
-    double cancel_rate;
-    double queue_position_imbalance;
 
     // --- Liquidity
     double depth_imbalance;
@@ -37,15 +34,14 @@ struct FeatureSet {
     double price_gap;
 
     // --- Microstructure Transitions
-    int8_t tick_direction;
+    double tick_direction_entropy;
     double reversal_rate;
-    double quote_revision_rate;
-    int spread_crossing;
-    int aggressor_flag;
+    double spread_crossing;
+    double aggressor_bias;
 
     // --- Engineered
-    double of_entropy;
+    double shannon_entropy;
     double liquidity_stress;
 };
 
-} // namespace microregime
+} // namespace features

@@ -5,11 +5,11 @@
 #include <cstddef>
 #include <string>
 
-namespace features {
+namespace microregime {
 
 struct FeatureSet {
     uint64_t timestamp_ns;
-    std::string symbol;
+    std::string instrument;
 
     // --- Price & Spread
     double log_spread;
@@ -44,4 +44,4 @@ struct FeatureSet {
     double liquidity_stress;
 };
 
-} // namespace features
+} // namespace microregime

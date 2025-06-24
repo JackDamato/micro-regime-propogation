@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace features {
+namespace microregime {
 class FeatureNormalizer {
 public:
     FeatureNormalizer() = default;

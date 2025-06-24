@@ -1,6 +1,7 @@
 # Add both test files to the test executable
 add_executable(module2_tests 
     test_feature_processor.cpp
+    test_timestamp_pipeline.cpp
 )
 
 # Link with our module and GTest

@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <array>
+#include <string>
 #include <cstdint>
 #include "common_constants.hpp"
 
@@ -11,6 +12,7 @@ using microregime::ROLLING_WINDOW;
 struct FeatureInputSnapshot {
     // --- Timestamp and Event Type ---
     uint64_t timestamp_ns;               // Nanosecond timestamp
+    std::string instrument;
     // uint32_t quote_update_count;         // Number of order book modifications this tick
 
     // --- Top of Book State ---

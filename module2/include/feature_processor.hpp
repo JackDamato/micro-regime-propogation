@@ -4,7 +4,7 @@
 #include "feature_snapshot.hpp"
 #include "feature_normalizer.hpp"
 
-namespace features {
+namespace microregime {
 
 class FeatureProcessor {
 public:
@@ -43,4 +43,4 @@ private:
     FeatureNormalizer feature_normalizer_;
 };
 
-} // namespace features
+} // namespace microregime

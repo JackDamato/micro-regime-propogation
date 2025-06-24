@@ -13,7 +13,7 @@ struct L3Snapshot;
 class FeatureEngine {
 public:
     // Constructor that takes a reference to an OrderBookManager
-    explicit FeatureEngine(OrderBookManager& order_book);
+    FeatureEngine(OrderBookManager& order_book, std::string instrument);
     
     // Disable copy and move constructors/assignment
     FeatureEngine(const FeatureEngine&) = delete;
@@ -41,7 +41,7 @@ public:
 private:
     // Reference to the order book
     OrderBookManager& order_book_;
-
+    std::string instrument_;
     // Internal state for rolling calculations
     struct RollingState {
         std::deque<double> mid_prices;

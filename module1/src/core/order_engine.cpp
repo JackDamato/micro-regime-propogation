@@ -36,6 +36,11 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
     if (event.timestamp_ns < current_timestamp_) {
         throw std::runtime_error("Out-of-order event detected");
     }
+    
+    if (event.instrument == "ES" && event.instrument_id != 4916) {
+        return;
+    }
+
     current_timestamp_ = event.timestamp_ns;
     
     auto& order_book = get_or_create_order_book(event.instrument);
@@ -90,7 +95,8 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
             case 'R': { // Clear
                 order_book.Reset();
                 feature_engine->reset();
-                std::cout << "Clear event received" << std::endl;
+                // reset();
+                std::cout << "Clear event received at " << event.timestamp_ns << std::endl;
                 break;
             }
             case 'T': {  // Trade
@@ -113,8 +119,8 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 break;
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error processing event: " << e.what() << std::endl;
+        // std::cerr << "Error processing event: " << e.what() << std::endl;
     } catch (...) {
-        std::cerr << "Unknown error processing event" << std::endl;
+        // std::cerr << "Unknown error processing event" << std::endl;
     }
 }

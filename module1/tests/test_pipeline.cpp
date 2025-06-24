@@ -4,6 +4,8 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <unordered_map>
+#include <vector>
 #include <dbn_reader.hpp>
 #include <event_parser.hpp>
 #include <order_engine.hpp>
@@ -17,19 +19,19 @@ class MarketDataPipelineTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Path to the test data file
-        test_file_ = fs::path("..") / ".." / "data" / "SPY" / "xnas-itch-20250505.mbo.dbn.zst";
+        test_file_ = fs::path("..") / ".." / "data" / "ES" / "glbx-mdp3-20250506.mbo.dbn.zst";
         
         // Fallback path if running from build directory
         if (!fs::exists(test_file_)) {
-            test_file_ = fs::path("..") / "data" / "SPY" / "xnas-itch-20250505.mbo.dbn.zst";
+            test_file_ = fs::path("..") / "data" / "ES" / "glbx-mdp3-20250506.mbo.dbn.zst";
             if (!fs::exists(test_file_)) {
                 GTEST_SKIP() << "Test file not found at either location:"
-                           << "\n  " << fs::absolute("../../data/SPY/xnas-itch-20250505.mbo.dbn.zst")
-                           << "\n  " << fs::absolute("../data/SPY/xnas-itch-20250505.mbo.dbn.zst");
+                           << "\n  " << fs::absolute("../../data/ES/glbx-mdp3-20250506.mbo.dbn.zst")
+                           << "\n  " << fs::absolute("../data/ES/glbx-mdp3-20250506.mbo.dbn.zst");
             }
         }
         
-        instrument_ = "SPY";
+        instrument_ = "ES";
         std::cout << "Testing with file: " << fs::absolute(test_file_) << std::endl;
     }
     
@@ -115,11 +117,9 @@ TEST_F(MarketDataPipelineTest, FullPipelineTest) {
     size_t event_count = 0;
     size_t snapshot_count = 0;
     
-    FeatureEngine feature_engine(const_cast<OrderBookManager&>(order_engine.get_or_create_order_book(instrument_)));
-    
+    FeatureEngine feature_engine(const_cast<OrderBookManager&>(order_engine.get_or_create_order_book(instrument_)), instrument_);
     std::cout << "Starting pipeline test...\n";
-    while (parser.has_more_events() && event_count < max_events) {
-
+    while (parser.has_more_events() && event_count < max_events) {            
         // Process next event
         bool processed = parser.process_next(order_engine, &feature_engine);
 
@@ -142,6 +142,7 @@ TEST_F(MarketDataPipelineTest, FullPipelineTest) {
     std::cout << "\nPipeline test completed.\n";
     std::cout << "- Processed " << event_count << " events\n";
     std::cout << "- Generated " << snapshot_count << " snapshots\n";
+
     
     EXPECT_GT(event_count, 0) << "No events were processed";
     EXPECT_GT(snapshot_count, 0) << "No snapshots were generated";

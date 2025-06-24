@@ -5,8 +5,9 @@
 #include <cmath>
 #include <limits>
 
-FeatureEngine::FeatureEngine(OrderBookManager& order_book)
+FeatureEngine::FeatureEngine(OrderBookManager& order_book, std::string instrument)
     : order_book_(order_book) {
+    instrument_ = instrument;
     reset();
 }
 
@@ -80,6 +81,7 @@ FeatureInputSnapshot FeatureEngine::generate_snapshot() {
     snapshot.ask_depth_change_direction = delta.ask_dir;
     update_trade_info(snapshot);
     
+    snapshot.instrument = instrument_;
     return snapshot;
 }
 

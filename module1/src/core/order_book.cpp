@@ -158,9 +158,13 @@ void OrderBookManager::GetDepthChange(L3Delta& delta) const {
 }
 
 void OrderBookManager::Reset() {
+    std::cout << "Resetting order book " << std::endl;
     bid_book_.clear();
     ask_book_.clear();
     order_lookup_.clear();
+    // print out bid and ask books to verify they are empty
+    std::cout << "Bid book size: " << bid_book_.size() << std::endl;
+    std::cout << "Ask book size: " << ask_book_.size() << std::endl;
     last_snapshot_ = L3Snapshot{};
     last_delta_ = L3Delta{};
 }

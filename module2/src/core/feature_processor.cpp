@@ -6,10 +6,12 @@
 #include <numeric>
 #include <utility>
 
-namespace features {
+namespace microregime {
 
 FeatureSet FeatureProcessor::GetRawFeatureSet(const FeatureInputSnapshot& snapshot) {
     FeatureSet feature_set;
+    feature_set.timestamp_ns = snapshot.timestamp_ns;
+    feature_set.instrument = snapshot.instrument;
     ProcessPriceAndSpread(snapshot, feature_set);
     ProcessVolatility(snapshot, feature_set);
     ProcessOrderFlow(snapshot, feature_set);
@@ -103,7 +105,8 @@ void FeatureProcessor::ProcessVolatility(const FeatureInputSnapshot& snapshot, F
     }
     double avg_up_var = (up_count > 0) ? up_var / up_count : 0.0;
     double avg_down_var = (down_count > 0) ? down_var / down_count : 0.0;
-    feature_set.directional_volatility = std::sqrt(avg_up_var - avg_down_var);
+    double diff = avg_up_var - avg_down_var;
+    feature_set.directional_volatility = std::sqrt(std::abs(diff)) * ((diff >= 0) ? 1.0 : -1.0);
 
     // Spread Volatility
     double mean_spread = std::accumulate(spreads.begin(), spreads.end(), 0.0) / ROLLING_WINDOW;
@@ -292,4 +295,4 @@ double FeatureProcessor::infer_pre_trade_midprice(const FeatureInputSnapshot& sn
     return 0.0;
 }
 
-} // namespace features
+} // namespace microregime

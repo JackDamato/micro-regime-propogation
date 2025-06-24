@@ -11,7 +11,6 @@ class EventParser {
 public:
     // Constructor with DBN file path and instrument
     EventParser(const std::string& dbn_filepath, const std::string& instrument);
-    
     ~EventParser() = default;
     
     // Disable copy and move
@@ -36,7 +35,9 @@ public:
     
     // Check if there are more events to process
     bool has_more_events() const;
-
+    
+    // Get the next event from the reader (with buffering)
+    std::optional<MarketEvent> get_next_event();
 private:
     // The DBN reader
     std::unique_ptr<DbnMboReader> reader_;
@@ -47,6 +48,5 @@ private:
     // Buffer for the next event (used for lookahead)
     std::optional<MarketEvent> next_event_;
     
-    // Get the next event from the reader (with buffering)
-    std::optional<MarketEvent> get_next_event();
+
 };

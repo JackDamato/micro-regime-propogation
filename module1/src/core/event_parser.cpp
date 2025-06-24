@@ -41,10 +41,9 @@ bool EventParser::process_next(OrderEngine& engine, FeatureEngine* feature_engin
     if (!next_event_) {
         return false;
     }
-    
     // Process the current event
     engine.process_event(*next_event_, feature_engine);
-    
+
     // Update our timestamp
     current_timestamp_ = next_event_->timestamp_ns;
     

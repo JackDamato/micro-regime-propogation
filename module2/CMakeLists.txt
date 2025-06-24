@@ -4,6 +4,8 @@ project(module2 LANGUAGES CXX)
 add_library(module2
     src/core/feature_processor.cpp
     src/core/feature_normalizer.cpp
+    src/core/timestamp_pipeline.cpp
+    src/data/features_to_csv.cpp
 )
 
 target_include_directories(module2 PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
@@ -11,6 +13,9 @@ target_include_directories(module2 PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOUR
 target_link_libraries(module2 PUBLIC module1)
 
 target_compile_features(module2 PUBLIC cxx_std_20)
+
+add_executable(features_to_csv src/data/features_to_csv.cpp)
+target_link_libraries(features_to_csv PUBLIC module2)
 
 # # Add tests if enabled
 if(BUILD_TESTING)

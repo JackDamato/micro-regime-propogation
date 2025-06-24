@@ -11,14 +11,16 @@
 #include <feature_engine.hpp>
 #include <feature_snapshot.hpp>
 #include <feature_processor.hpp>
+#include <feature_set.hpp>
 
 namespace fs = std::filesystem;
+using namespace microregime;
 
 // Helper function to print a FeatureSet
-void print_feature_set(const features::FeatureSet& fs, const std::string& title) {
+void print_feature_set(const FeatureSet& fs, const std::string& title) {
     std::cout << "\n\n\n=== " << title << " ===\n";
     std::cout << "Timestamp: " << fs.timestamp_ns << " ns\n";
-    std::cout << "Symbol: " << fs.symbol << "\n";
+    std::cout << "Symbol: " << fs.instrument << "\n";
     
     // Price & Spread
     std::cout << "\n--- Price & Spread ---\n";
@@ -63,19 +65,19 @@ class FeatureProcessorTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Path to the test data file
-        test_file_ = fs::path("..") / ".." / "data" / "SPY" / "xnas-itch-20250505.mbo.dbn.zst";
+        test_file_ = fs::path("..") / ".." / "data" / "ES" / "glbx-mdp3-20250505.mbo.dbn.zst";
         
         // Fallback path if running from build directory
         if (!fs::exists(test_file_)) {
-            test_file_ = fs::path("..") / "data" / "SPY" / "xnas-itch-20250505.mbo.dbn.zst";
+            test_file_ = fs::path("..") / "data" / "ES" / "glbx-mdp3-20250505.mbo.dbn.zst";
             if (!fs::exists(test_file_)) {
                 GTEST_SKIP() << "Test file not found at either location:"
-                           << "\n  " << fs::absolute("../../data/SPY/xnas-itch-20250505.mbo.dbn.zst")
-                           << "\n  " << fs::absolute("../data/SPY/xnas-itch-20250505.mbo.dbn.zst");
+                           << "\n  " << fs::absolute("../../data/ES/glbx-mdp3-20250505.mbo.dbn.zst")
+                           << "\n  " << fs::absolute("../data/ES/glbx-mdp3-20250505.mbo.dbn.zst");
             }
         }
         
-        instrument_ = "SPY";
+        instrument_ = "ES";
         std::cout << "Testing with file: " << fs::absolute(test_file_) << std::endl;
     }
     
@@ -89,12 +91,12 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
     EventParser parser(test_file_.string(), instrument_);
     
     // 2. Initialize feature engine and processor
-    FeatureEngine feature_engine(const_cast<OrderBookManager&>(order_engine.get_or_create_order_book(instrument_)));
-    features::FeatureProcessor feature_processor;
+    FeatureEngine feature_engine(const_cast<OrderBookManager&>(order_engine.get_or_create_order_book(instrument_)), instrument_);
+    FeatureProcessor feature_processor;
     
     // 3. Process events and collect snapshots
     const size_t max_events = 100000000;      // Process first N events
-    const size_t snapshot_interval = 1000000000; // Take snapshot every 1s
+    const size_t snapshot_interval = 1000000000000; // Take snapshot every 1s
     size_t event_count = 0;
     size_t snapshot_count = 0;
     
@@ -120,7 +122,7 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
             
             // Get raw features first
             auto raw_features = feature_processor.GetRawFeatureSet(snapshot);
-            raw_features.symbol = instrument_;
+            raw_features.instrument = instrument_;
             raw_features.timestamp_ns = snapshot.timestamp_ns;
             
             // Then get normalized features
@@ -151,7 +153,7 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
 }
 
 // Main function for running the tests
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
+// int main(int argc, char **argv) {
+//     ::testing::InitGoogleTest(&argc, argv);
+//     return RUN_ALL_TESTS();
+// }

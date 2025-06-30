@@ -15,7 +15,7 @@ class CsvWriter : public DataReciever {
 public:
     CsvWriter(const std::string& base_filename) {
         // Create output directory if it doesn't exist
-        std::filesystem::path dir = "output";
+        std::filesystem::path dir = "C:\\Users\\jackd\\OneDrive\\Documents\\MicroRegimeProject\\data\\output";
         std::filesystem::create_directories(dir);
         
         // Open CSV files for writing

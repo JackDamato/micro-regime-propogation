@@ -2,11 +2,12 @@
 #include "feature_set.hpp"
 #include <numeric>
 #include <iostream>
+#include <ctime>
 
 namespace microregime {
 
-const int long_window_size = 5000;
-const int short_window_size = 750;
+const int long_window_size = 500; 
+const int short_window_size = 50; 
 
 const std::vector<std::string> feature_names = {
     "log_spread", "price_impact", "log_return",
@@ -176,8 +177,6 @@ void FeatureNormalizer::AddFeatureSet(const FeatureSet& feature_set) {
 
         window_short.pop_front();
     }
-
-    window_long.push_back(feature_set);
 }
 
 std::pair<FeatureSet, FeatureSet> FeatureNormalizer::NormalizeFeatureSet(const FeatureSet& feature_set) {
@@ -191,9 +190,12 @@ std::pair<FeatureSet, FeatureSet> FeatureNormalizer::NormalizeFeatureSet(const F
     normalized_feature_set_long.spread_crossing = feature_set.spread_crossing;
     normalized_feature_set_long.aggressor_bias = feature_set.aggressor_bias;
 
-    auto safe_zscore = [](double x, double sum, double sum2, size_t n) {
+    auto safe_zscore = [](double x, double sum, double sum2, size_t n, const std::string& field) {
         double mean = sum / n;
         double variance = (sum2 / n) - (mean * mean);
+        if (variance <= 0.0) {
+            std::cout << "Warning: Variance is non-positive. Setting to 1.0. Field: " << field << std::endl;
+        }
         double stddev = (variance > 0.0) ? std::sqrt(variance) : 1.0;
         return (x - mean) / stddev;
     };
@@ -204,7 +206,7 @@ std::pair<FeatureSet, FeatureSet> FeatureNormalizer::NormalizeFeatureSet(const F
     #define CALC_ZSCORE(field) \
         sum = feature_sums_long[#field]; \
         sum2 = feature_sums_2_long[#field]; \
-        normalized_feature_set_long.field = safe_zscore(feature_set.field, sum, sum2, n_long)
+        normalized_feature_set_long.field = safe_zscore(feature_set.field, sum, sum2, n_long, #field);
 
     CALC_ZSCORE(log_spread);
     CALC_ZSCORE(price_impact);
@@ -238,7 +240,7 @@ std::pair<FeatureSet, FeatureSet> FeatureNormalizer::NormalizeFeatureSet(const F
     #define CALC_ZSCORE_SHORT(field) \
         sum = feature_sums_short[#field]; \
         sum2 = feature_sums_2_short[#field]; \
-        normalized_feature_set_short.field = safe_zscore(feature_set.field, sum, sum2, n_short)
+        normalized_feature_set_short.field = safe_zscore(feature_set.field, sum, sum2, n_short, #field);
 
     CALC_ZSCORE_SHORT(log_spread);
     CALC_ZSCORE_SHORT(price_impact);

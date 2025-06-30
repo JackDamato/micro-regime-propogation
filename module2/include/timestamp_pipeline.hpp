@@ -40,6 +40,8 @@ private:
     std::string timestamp_;
     std::string base_asset_;
     std::string future_;
+    uint64_t getNYSEStartTime(const std::string& date_str);
+    uint64_t getNYSEEndTime(const std::string& date_str);
     FeatureCallback callback_;
 
     OrderEngine order_engine_;

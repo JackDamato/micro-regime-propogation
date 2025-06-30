@@ -93,8 +93,9 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 break;
             }
             case 'R': { // Clear
-                order_book.Reset();
-                feature_engine->reset();
+                std::cout << "Flags: " << event.flags << std::endl;
+                // order_book.Reset();
+                // feature_engine->reset();
                 // reset();
                 std::cout << "Clear event received at " << event.timestamp_ns << std::endl;
                 break;

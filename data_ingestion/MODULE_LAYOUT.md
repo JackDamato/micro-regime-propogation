@@ -66,7 +66,7 @@ module1/
    Contains data structures for representing market events including order actions, trades, and book updates.
 
 8. **order_book.hpp**  
-   Implements a high-performance limit order book with support for L2/L3 order book reconstruction.
+   Implements a high-performance limit order book with support for L3 order book reconstruction.
 
 9. **order_engine.hpp**  
    Orchestrates the processing of market events through the order book and feature pipeline.

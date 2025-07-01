@@ -59,9 +59,9 @@ Timestamp pipeline interface: pass in a date and two asset names and a data reci
 ```mermaid
 classDiagram
     class TimestampPipeline {
-        +run(snapshot_interval_ns: uint64_t, base_data_receiver: DataReceiver&, future_data_receiver: DataReceiver&) void
-        -getNYSEStartTime(date_str: string) uint64_t
-        -getNYSEEndTime(date_str: string) uint64_t
+        +run() void
+        -getNYSEStartTime() uint64_t
+        -getNYSEEndTime() uint64_t
         -order_engine: OrderEngine
         -parser_base_: EventParser
         -parser_future_: EventParser
@@ -71,7 +71,7 @@ classDiagram
     }
 
     class EventParser {
-        +process_next(engine: OrderEngine&, feature_engine: FeatureEngine*) bool
+        +process_next() bool
         +current_timestamp() uint64_t
         +has_more_events() bool
         +get_next_event() optional~MarketEvent~
@@ -80,21 +80,21 @@ classDiagram
     }
 
     class OrderEngine {
-        +process_event(event: MarketEvent&, feature_engine: FeatureEngine* = nullptr) void
-        +get_order_book(instrument: string) const OrderBookManager&
+        +process_event() void
+        +get_order_book() const OrderBookManager&
         +get_order_books() const unordered_map~string, OrderBookManager~&
         +current_timestamp() uint64_t
         +reset() void
-        +get_order_info(order_id: uint64_t) optional~OrderInfo~
+        +get_order_info() optional~OrderInfo~
         -order_books_: unordered_map~string, OrderBookManager~
         -order_info_: unordered_map~uint64_t, OrderInfo~
         -current_timestamp_: uint64_t
     }
 
     class OrderBookManager {
-        +ApplyAdd(order_id: uint64_t, price: double, size: int, side: BookSide) void
-        +ApplyModify(order_id: uint64_t, new_price: double, new_size: int) void
-        +ApplyCancel(order_id: uint64_t, canceled_size: int) void
+        +ApplyAdd() void
+        +ApplyModify() void
+        +ApplyCancel() void
         +ApplyClear() void
         +get_bbo() BBO
         +get_l3_snapshot() L3Snapshot
@@ -102,10 +102,9 @@ classDiagram
 
     class FeatureEngine {
         +generate_snapshot() FeatureInputSnapshot
-        +generate_snapshot_from_l3(l3_snapshot: L3Snapshot&, timestamp_ns: uint64_t) FeatureInputSnapshot
-        +update_trade(price: double, size: double, direction: int8_t) void
+        +generate_snapshot_from_l3() FeatureInputSnapshot
+        +update_trade() void
         +update_rolling_state() void
-        +update_events(event_type: char) void
         +reset() void
         -order_book_: OrderBookManager&
         -instrument_: string
@@ -113,22 +112,22 @@ classDiagram
     }
 
     class FeatureProcessor {
-        +GetRawFeatureSet(snapshot: FeatureInputSnapshot&) FeatureSet
-        +GetProcessedFeatureSets(raw_feature_set: FeatureSet&) pair<FeatureSet, FeatureSet>
-        -ProcessPriceAndSpread(snapshot: FeatureInputSnapshot&, feature_set: FeatureSet&) void
-        -ProcessVolatility(snapshot: FeatureInputSnapshot&, feature_set: FeatureSet&) void
-        -ProcessOrderFlow(snapshot: FeatureInputSnapshot&, feature_set: FeatureSet&) void
-        -ProcessLiquidity(snapshot: FeatureInputSnapshot&, feature_set: FeatureSet&) void
-        -ProcessMicrostructureTransitions(snapshot: FeatureInputSnapshot&, feature_set: FeatureSet&) void
-        -ProcessEngineeredFeatures(snapshot: FeatureInputSnapshot&, feature_set: FeatureSet&) void
-        -infer_pre_trade_midprice(snap: FeatureInputSnapshot&) double
+        +GetRawFeatureSet() FeatureSet
+        +GetProcessedFeatureSets() pair<FeatureSet, FeatureSet>
+        -ProcessPriceAndSpread() void
+        -ProcessVolatility() void
+        -ProcessOrderFlow() void
+        -ProcessLiquidity() void
+        -ProcessMicrostructureTransitions() void
+        -ProcessEngineeredFeatures() void
+        -infer_pre_trade_midprice() double
         -cache_: Cache
         -feature_normalizer_: FeatureNormalizer
     }
 
     class FeatureNormalizer {
-        +AddFeatureSet(feature_set: FeatureSet&) void
-        +NormalizeFeatureSet(feature_set: FeatureSet&) pair<FeatureSet, FeatureSet>
+        +AddFeatureSet() void
+        +NormalizeFeatureSet() pair<FeatureSet, FeatureSet>
         -window_long: deque<FeatureSet>
         -window_short: deque<FeatureSet>
         -feature_sums_long: unordered_map<string, double>
@@ -141,14 +140,14 @@ classDiagram
         +ingest_feature_set() void
     }
 
-    TimestampPipeline --> EventParser : uses
-    TimestampPipeline --> OrderEngine : uses
-    TimestampPipeline --> FeatureEngine : uses
-    TimestampPipeline --> FeatureProcessor : uses
-    TimestampPipeline --> DataReceiver : notifies
+    TimestampPipeline --> EventParser : get_next_event
+    TimestampPipeline --> OrderEngine : process_event
+    TimestampPipeline --> FeatureEngine : generate_snapshot
+    TimestampPipeline --> FeatureProcessor : GetProcessedFeatureSets
+    TimestampPipeline --> DataReceiver : ingest_feature_set
     OrderEngine --> OrderBookManager : updates
     OrderEngine --> FeatureEngine : notifies
-    FeatureEngine --> OrderBookManager : reads from
+    FeatureEngine --> OrderBookManager : reads_from
     FeatureProcessor --> FeatureNormalizer : uses
 ```
 
@@ -226,40 +225,60 @@ classDiagram
 
 ```mermaid
 sequenceDiagram
-    participant D as DbnMboReader
+    participant T as TimestampPipeline
+    participant P as EventParser
     participant E as OrderEngine
     participant O as OrderBookManager
     participant F as FeatureEngine
-    participant S as Strategy
-    
-    D->>E: MarketEvent(Add)
-    E->>O: add_order(event)
-    O-->>F: OrderBookUpdate(Add)
-    F->>F: update_features()
-    F->>S: on_features_updated(features)
-    
-    D->>E: MarketEvent(Trade)
-    E->>O: process_trade(event)
-    O-->>F: OrderBookUpdate(Trade)
-    F->>F: update_features()
-    F->>S: on_features_updated(features)
+    participant R as FeatureProcessor
+    participant D as DataReceiver
+
+    T->>P: get_next_event()
+    P-->>T: MarketEvent
+    T->>E: process_event(event, feature_engine)
+    E->>O: ApplyAdd/ApplyModify/ApplyCancel
+    O-->>F: (implicit state update via reference)
+    E->>F: update_trade() [if trade]
+    T->>F: generate_snapshot()
+    F->>T: feature_input_snapshot
+    T->>R: GetProcessedFeatureSets()
+    R->>R: Process features
+    R->>R: Normalize features
+    R-->>T: (normalized features)
+    T->>D: ingest_feature_set(features)
 ```
 
 ### 2. Order Book Update Flow
 
 ```mermaid
 sequenceDiagram
+    participant T as TimestampPipeline
+    participant P as EventParser
     participant E as OrderEngine
     participant O as OrderBookManager
     participant F as FeatureEngine
+
+    T->>P: get_next_event()
+    P-->>T: MarketEvent
+    T->>E: process_event(event, feature_engine)
     
-    E->>O: add_order(event)
-    O->>O: validate_event(event)
-    O->>O: update_order_book(Add)
-    O->>O: generate_update_message()
-    O-->>F: OrderBookUpdate(Add)
-    F->>F: update_features()
-    F-->>E: features_updated(callback)
+    alt Add Order
+        E->>O: ApplyAdd(order_id, price, size, side)
+        O->>O: Update order book state
+        O-->>F: (implicit state update via reference)
+    else Modify Order
+        E->>O: ApplyModify(order_id, new_price, new_size)
+        O->>O: Update order book state
+        O-->>F: (implicit state update via reference)
+    else Cancel Order
+        E->>O: ApplyCancel(order_id, canceled_size)
+        O->>O: Update order book state
+        O-->>F: (implicit state update via reference)
+    end
+    
+    E->>F: update_trade() [if trade]
+    F->>F: update_rolling_state()
+    F->>F: update_events()
 ```
 
 ## Data Flow Diagrams
@@ -267,43 +286,92 @@ sequenceDiagram
 ### 1. System-Level Data Flow
 
 ```mermaid
-flowchart TD
-    A[Databento DBN Files] -->|read| B[DbnMboReader]
-    B -->|MarketEvent| C[OrderEngine]
-    C -->|route| D[OrderBookManager]
-    D -->|update| E[OrderBook State]
-    E -->|notify| F[FeatureEngine]
-    F -->|features| G[Strategy/Model]
-    G -->|orders| H[Exchange]
-    H -->|market data| A
-    
-    style A fill:#f9f,stroke:#333
-    style B fill:#bbf,stroke:#333
-    style C fill:#bbf,stroke:#333
-    style D fill:#bbf,stroke:#333
-    style E fill:#9f9,stroke:#333
-    style F fill:#bbf,stroke:#333
-    style G fill:#fbb,stroke:#333
-    style H fill:#fbb,stroke:#333
+flowchart LR
+
+%% Swimlane 1: Input & Preprocessing
+subgraph Input_Processing["Input & Processing"]
+    A[Databento DBN Files]
+    B[EventParser]
+    C[TimestampPipeline]
+    D[OrderEngine]
+end
+
+%% Swimlane 2: Order Book Processing
+subgraph Book_Processing["Order Book Processing"]
+    E[OrderBookManager]
+    F[FeatureEngine]
+    G[FeatureProcessor]
+    H[DataReceiver]
+end
+
+%% Swimlane 3: Regime Analysis
+subgraph Regime_Analysis["Regime Analysis"]
+    I[RegimeClassifier]
+    J[Risk Engine]
+end
+
+%% Flow connections
+A -->|read| B
+B -->|MarketEvent| C
+C -->|process_event| D
+D -->|Apply| E
+E -->|state| F
+F -->|Snapshot| G
+G -->|Features| H
+H -->|features| I
+I -->|probabilities| J
+
+%% Styling
+style A fill:#f9f,stroke:#333
+style B fill:#bbf,stroke:#333
+style C fill:#ddf,stroke:#333,stroke-width:2px
+style D fill:#bbf,stroke:#333
+style E fill:#bbf,stroke:#333
+style F fill:#bbf,stroke:#333
+style G fill:#bbf,stroke:#333
+style H fill:#9f9,stroke:#333
+style I fill:#fdb,stroke:#333,stroke-width:2px
+style J fill:#fbb,stroke:#333
+
+%% Optional subgraph box styling (optional: comment out to remove)
+style Input_Processing fill:#f0f0ff,stroke:#ccc
+style Book_Processing fill:#f0fff0,stroke:#ccc
+style Regime_Analysis fill:#fff0f0,stroke:#ccc
 ```
 
 ### 2. Feature Computation Flow
 
 ```mermaid
 flowchart LR
-    A[OrderBook Updates] --> B[FeatureEngine]
-    B --> C[Feature 1: Mid Price]
-    B --> D[Feature 2: Spread]
-    B --> E[Feature 3: Order Imbalance]
-    B --> F[Feature N: ...]
-    C --> G[Feature Vector]
-    D --> G
-    E --> G
-    F --> G
-    G --> H[Strategy/Model]
+    %% Feature Processing
+    A[OrderBook State] -->|reference| B[FeatureEngine]
+    B -->|generate_snapshot| C[FeatureInputSnapshot]
+    C --> D[FeatureProcessor]
     
-    style G fill:#9f9,stroke:#333
-    style H fill:#fbb,stroke:#333
+    %% Feature Extraction
+    D --> E[Raw Feature Calculation]
+    E --> F[Feature Normalization]
+    F --> G[Long/Short Window Features]
+    
+    %% Regime Classification
+    G --> H[RegimeClassifier HMM or Variant]
+    H --> I[Regime Probabilities]
+    I --> J[Regime State]
+    
+    %% Feedback Loop
+    J -->|update model| H
+    
+    %% Styling
+    style A fill:#9f9,stroke:#333
+    style B fill:#bbf,stroke:#333
+    style C fill:#9f9,stroke:#333
+    style D fill:#bbf,stroke:#333
+    style E fill:#ddf,stroke:#333
+    style F fill:#ddf,stroke:#333
+    style G fill:#9f9,stroke:#333,stroke-width:2px
+    style H fill:#fdb,stroke:#333,stroke-width:2px
+    style I fill:#f9f,stroke:#333
+    style J fill:#f9f,stroke:#333
 ```
 
 ## Component Details

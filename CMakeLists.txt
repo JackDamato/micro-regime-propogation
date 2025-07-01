@@ -46,8 +46,7 @@ if(MSVC)
     )
 endif()
 
-
 # Add my modules
-add_subdirectory(module1)
-add_subdirectory(module2)
+add_subdirectory(data_ingestion)
+add_subdirectory(feature_generation)
 

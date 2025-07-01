@@ -6,6 +6,10 @@ build/
 # Data files
 ES/
 SPY/
+output/
+
+# CSV files
+*.csv
 
 # Databento folder
 databento-cpp/

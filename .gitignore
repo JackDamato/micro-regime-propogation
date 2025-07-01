@@ -6,7 +6,7 @@ build/
 # Data files
 ES/
 SPY/
-output/
+data/output/
 
 # CSV files
 *.csv

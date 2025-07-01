@@ -7,7 +7,7 @@ build/
 ES/
 SPY/
 data/output/
-
+output/
 # CSV files
 *.csv
 

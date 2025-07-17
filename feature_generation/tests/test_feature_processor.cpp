@@ -25,7 +25,6 @@ void print_feature_set(const FeatureSet& fs, const std::string& title) {
     // Price & Spread
     std::cout << "\n--- Price & Spread ---\n";
     std::cout << "Log Spread: " << fs.log_spread << "\n";
-    std::cout << "Price Impact: " << fs.price_impact << "\n";
     std::cout << "Log Return: " << fs.log_return << "\n";
     
     // Volatility
@@ -52,7 +51,6 @@ void print_feature_set(const FeatureSet& fs, const std::string& title) {
     std::cout << "\n--- Microstructure Transitions ---\n";
     std::cout << "Tick Direction Entropy: " << fs.tick_direction_entropy << "\n";
     std::cout << "Reversal Rate: " << fs.reversal_rate << "\n";
-    std::cout << "Spread Crossing: " << fs.spread_crossing << "\n";
     std::cout << "Aggressor Bias: " << fs.aggressor_bias << "\n";
     
     // Engineered Features

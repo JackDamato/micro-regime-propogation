@@ -4,18 +4,23 @@
 #include <filesystem>
 #include <iomanip>
 #include <sstream>
-#include "timestamp_pipeline.hpp"
+#include "dual_feature_pipeline.hpp"
 #include "feature_set.hpp"
 #include "data_reciever.hpp"
+#include "common_constants.hpp"
+#include "environment.hpp"
 
 namespace microregime {
 
 // Custom DataReceiver that writes features to CSV files
 class CsvWriter : public DataReciever {
 public:
-    CsvWriter(const std::string& base_filename) {
+    CsvWriter(const std::string& base_filename, const uint64_t snapshot_interval_ns, const std::string& date) {
         // Create output directory if it doesn't exist
-        std::filesystem::path dir = "C:\\Users\\jackd\\OneDrive\\Documents\\MicroRegimeProject\\data\\output";
+        std::string seconds = std::to_string(static_cast<double>(snapshot_interval_ns) / 1000000000);
+        std::string dir_name = "output_" + seconds + "s_L" + std::to_string(LONG_WINDOW_SIZE) + "_S" + std::to_string(SHORT_WINDOW_SIZE) + "_E" + std::to_string(ROLLING_WINDOW);
+        std::filesystem::path dir = get_project_root() / "data" / dir_name / date;
+        std::cout << "Creating directory: " << dir.string() << std::endl;
         std::filesystem::create_directories(dir);
         
         // Open CSV files for writing
@@ -58,10 +63,10 @@ private:
         csv << "timestamp_ns,instrument,";
         
         // Feature fields
-        csv << "log_spread,price_impact,log_return,ewm_volatility,realized_variance,"
+        csv << "midprice,log_spread,log_return,ewm_volatility,realized_variance,"
             << "directional_volatility,spread_volatility,ofi,signed_volume_pressure,"
             << "order_arrival_rate,depth_imbalance,market_depth,lob_slope,price_gap,"
-            << "tick_direction_entropy,reversal_rate,spread_crossing,aggressor_bias,"
+            << "tick_direction_entropy,reversal_rate,aggressor_bias,"
             << "shannon_entropy,liquidity_stress\n";
     }
     
@@ -73,8 +78,8 @@ private:
         
         // Write all feature values
         csv << std::setprecision(15) << std::scientific
+            << fs.midprice << ","
             << fs.log_spread << ","
-            << fs.price_impact << ","
             << fs.log_return << ","
             << fs.ewm_volatility << ","
             << fs.realized_variance << ","
@@ -89,7 +94,6 @@ private:
             << fs.price_gap << ","
             << fs.tick_direction_entropy << ","
             << fs.reversal_rate << ","
-            << fs.spread_crossing << ","
             << fs.aggressor_bias << ","
             << fs.shannon_entropy << ","
             << fs.liquidity_stress << "\n";
@@ -101,11 +105,11 @@ void run_feature_extraction(const std::string& timestamp,
                           const std::string& future,
                           uint64_t snapshot_interval_ns) {
     // Create CSV writers for both instruments
-    CsvWriter base_writer("base_" + base_asset);
-    CsvWriter future_writer("future_" + future);
+    CsvWriter base_writer("base_" + base_asset, snapshot_interval_ns, timestamp);
+    CsvWriter future_writer("future_" + future, snapshot_interval_ns, timestamp);
     
     // Create and run the pipeline
-    TimestampPipeline pipeline(timestamp, base_asset, future);
+    DualFeaturePipeline pipeline(timestamp, base_asset, future);
     pipeline.run(snapshot_interval_ns, base_writer, future_writer);
 }
 
@@ -122,7 +126,7 @@ int main(int argc, char** argv) {
     std::string timestamp = argv[1];
     std::string base_asset = argv[2];
     std::string future = argv[3];
-    uint64_t snapshot_interval_ns = (argc > 4) ? std::stoull(argv[4]) : 1000000000; // Default 1 second
+    uint64_t snapshot_interval_ns = (argc > 4) ? std::stoull(argv[4]) : microregime::SNAPSHOT_INTERVAL_NS;
     
     try {
         microregime::run_feature_extraction(timestamp, base_asset, future, snapshot_interval_ns);

@@ -39,11 +39,6 @@ struct FeatureInputSnapshot {
     std::array<int8_t, DEPTH_LEVELS> bid_depth_change_direction; // +1 = added, -1 = removed
     std::array<int8_t, DEPTH_LEVELS> ask_depth_change_direction;
 
-    // --- Trade Execution Data (if applicable) ---
-    double last_trade_price;     // Execution price if trade occurred
-    double last_trade_size;
-    int8_t last_trade_direction; // +1 = buy aggressor, -1 = sell, 0 = none
-
     // --- Optional Padding / Alignment ---
     uint32_t reserved = 0;
 };

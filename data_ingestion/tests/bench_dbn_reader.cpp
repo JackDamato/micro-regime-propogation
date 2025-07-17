@@ -6,14 +6,15 @@
 #include <iomanip>
 #include <vector>
 #include <iostream>
+#include "environment.hpp"
 
 namespace fs = std::filesystem;
 using namespace std::chrono;
-
+using namespace microregime;
 class DbnReaderBenchmark : public ::testing::Test {
 protected:
     static void SetUpTestSuite() {
-        test_file_ = fs::path("C:\\Users\\jackd\\OneDrive\\Documents\\MicroRegimeProject\\data\\ES\\glbx-mdp3-20250505.mbo.dbn.zst");
+        test_file_ = fs::path(get_project_root() / "data" / "ES" / "glbx-mdp3-20250505.mbo.dbn.zst");
         if (!fs::exists(test_file_)) {
             GTEST_SKIP() << "Test file not found: " << test_file_;
         }

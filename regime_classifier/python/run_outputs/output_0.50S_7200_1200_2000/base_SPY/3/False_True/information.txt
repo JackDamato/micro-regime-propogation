@@ -1,0 +1,39 @@
+=========== VARIANCE OF FEATURES ===========
+Feature, Variance
+avg_aggressor_bias,1.5439792170746631
+avg_shannon_entropy,1.4971996410928603
+avg_signed_volume_pressure,1.4179630695400216
+avg_realized_variance,1.047372502818345
+avg_directional_volatility,1.0278719816641853
+avg_spread_volatility,1.014323728950837
+avg_tick_direction_entropy,1.0089296796540035
+avg_ewm_volatility,0.9644796340722097
+
+============== END ==============
+
+=========== DURATION OF REGIMES ===========
+Regime, Mean Duration, Median Duration
+0.0,2.6218995765275257,1.0
+1.0,22.759124087591243,15.0
+2.0,27.00175438596491,18.0
+
+============== END ==============
+=========== VARIANCE OF FEATURES ===========
+Feature, Variance
+avg_aggressor_bias,1.5439792170746631
+avg_shannon_entropy,1.4971996410928603
+avg_signed_volume_pressure,1.4179630695400216
+avg_realized_variance,1.047372502818345
+avg_directional_volatility,1.0278719816641853
+avg_spread_volatility,1.014323728950837
+avg_ewm_volatility,0.9644796340722097
+
+============== END ==============
+
+=========== DURATION OF REGIMES ===========
+Regime, Mean Duration, Median Duration
+0.0,23.559055118110237,16.0
+1.0,24.084527220630374,16.0
+2.0,2.3513189448441247,1.0
+
+============== END ==============

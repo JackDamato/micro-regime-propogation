@@ -88,16 +88,6 @@ protected:
         std::cout << "  Ask Depth Change Directions: [";
         std::copy(snapshot.ask_depth_change_direction.begin(), snapshot.ask_depth_change_direction.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
         std::cout << static_cast<int>(snapshot.ask_depth_change_direction.back()) << "]\n";
-        
-        // Trade info
-        std::cout << "\nLast Trade: ";
-        if (snapshot.last_trade_size > 0) {
-            std::cout << snapshot.last_trade_size << " @ " << snapshot.last_trade_price
-                      << " (" << (snapshot.last_trade_direction > 0 ? "BUY" : "SELL") << ")";
-        } else {
-            std::cout << "None";
-        }
-        std::cout << "\n";
     
         // Reserved field
         std::cout << "Reserved: " << snapshot.reserved << "\n";

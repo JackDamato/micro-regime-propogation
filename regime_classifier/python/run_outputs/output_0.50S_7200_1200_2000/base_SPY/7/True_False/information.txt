@@ -1,0 +1,32 @@
+=========== VARIANCE OF FEATURES ===========
+Feature, Variance
+short_shannon_entropy,2.481346139809911
+short_aggressor_bias,2.4286365256297464
+short_signed_volume_pressure,2.406210418479986
+long_aggressor_bias,1.669938864057598
+long_shannon_entropy,1.5837613124754597
+long_signed_volume_pressure,1.3364093543679734
+short_realized_variance,1.1589564783492743
+short_directional_volatility,1.1321488278266056
+short_spread_volatility,1.1117394718333913
+short_tick_direction_entropy,1.064241805691137
+long_realized_variance,1.0344552518917578
+short_ewm_volatility,1.0179511501920588
+long_tick_direction_entropy,1.0070977723324748
+long_directional_volatility,0.9886624894623706
+long_spread_volatility,0.9720625808106788
+long_ewm_volatility,0.9343751136071088
+
+============== END ==============
+
+=========== DURATION OF REGIMES ===========
+Regime, Mean Duration, Median Duration
+0.0,21.002217294900223,14.0
+1.0,26.994949494949495,15.5
+2.0,1.6990228013029316,1.0
+3.0,25.190140845070424,16.0
+4.0,23.844827586206897,16.0
+5.0,10.054590570719602,7.0
+6.0,17.375,12.0
+
+============== END ==============

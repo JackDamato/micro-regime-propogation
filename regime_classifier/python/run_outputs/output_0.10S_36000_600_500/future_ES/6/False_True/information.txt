@@ -1,0 +1,23 @@
+=========== VARIANCE OF FEATURES ===========
+Feature, Variance
+avg_directional_volatility,1.3101709657235867
+avg_shannon_entropy,1.2176057905055255
+avg_signed_volume_pressure,1.2026228020419911
+avg_aggressor_bias,1.197126515367952
+avg_tick_direction_entropy,0.9819704327614466
+avg_spread_volatility,0.9808540068304519
+avg_ewm_volatility,0.9794613647140308
+avg_realized_variance,0.96110152198745
+
+============== END ==============
+
+=========== DURATION OF REGIMES ===========
+Regime, Mean Duration, Median Duration
+0.0,15.412933930571109,11.0
+1.0,18.684700206753963,11.0
+2.0,8.405152224824356,6.0
+3.0,12.463945578231293,8.0
+4.0,2.9067067067067067,1.0
+5.0,15.019914215686274,9.0
+
+============== END ==============

@@ -12,8 +12,8 @@ struct FeatureSet {
     std::string instrument;
 
     // --- Price & Spread
+    double midprice;
     double log_spread;
-    double price_impact;
     double log_return;
 
     // --- Volatility
@@ -36,7 +36,6 @@ struct FeatureSet {
     // --- Microstructure Transitions
     double tick_direction_entropy;
     double reversal_rate;
-    double spread_crossing;
     double aggressor_bias;
 
     // --- Engineered

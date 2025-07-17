@@ -79,17 +79,12 @@ FeatureInputSnapshot FeatureEngine::generate_snapshot() {
     order_book_.GetDepthChange(delta);
     snapshot.bid_depth_change_direction = delta.bid_dir;
     snapshot.ask_depth_change_direction = delta.ask_dir;
-    update_trade_info(snapshot);
     
     snapshot.instrument = instrument_;
     return snapshot;
 }
 
 void FeatureEngine::update_trade(double price, double size, int8_t direction) {
-    last_trade_.price = price;
-    last_trade_.size = size;
-    last_trade_.direction = direction;
-    
     if (direction != 0) {
         rolling_state_.rolling_trade_directions.push_back(direction);
         if (rolling_state_.rolling_trade_directions.size() > ROLLING_WINDOW) {
@@ -118,9 +113,6 @@ void FeatureEngine::update_trade(double price, double size, int8_t direction) {
 void FeatureEngine::reset() {
     // Reset rolling state
     rolling_state_ = RollingState{};
-    
-    // Reset trade info
-    last_trade_ = {};
 }
 
 
@@ -156,13 +148,4 @@ void FeatureEngine::update_events(char event_type) {
     if (rolling_state_.recent_event_types.size() > ROLLING_WINDOW) {
         rolling_state_.recent_event_types.pop_front();
     }
-}
-
-void FeatureEngine::update_trade_info(FeatureInputSnapshot& snapshot) {
-    snapshot.last_trade_price = last_trade_.price;
-    snapshot.last_trade_size = last_trade_.size;
-    snapshot.last_trade_direction = last_trade_.direction;
-    
-    // Reset trade info after it's been recorded
-    last_trade_ = {};
 }

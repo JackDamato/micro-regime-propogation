@@ -59,14 +59,6 @@ private:
         int adds_since_last_snapshot = 0;
     } rolling_state_;
     
-    // Trade data
-    struct {
-        double price = 0.0;
-        double size = 0.0;
-        int8_t direction = 0;  // +1 for buy, -1 for sell, 0 for none/unknown
-    } last_trade_;
-    
     // Helper methods
     void update_depth_changes(FeatureInputSnapshot& snapshot);
-    void update_trade_info(FeatureInputSnapshot& snapshot);
 };

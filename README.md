@@ -120,6 +120,32 @@ cmake -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_TOOLCHAIN_FILE="path/to/vcpkg/script
 cmake --build . --config Release
 ```
 
+### Environment Setup
+
+1. **Python Environment**
+   Create an `env.py` file in `./regime_classifier/python/` with the following content:
+   ```python
+   # Project root directory
+   PROJECT_ROOT = r"C:\\path\\to\\MicroRegimeProject"  # Update this path
+   ```
+
+2. **C++ Environment**
+   Create a `environment.hpp` file in `./data_ingestion/include/` with the project root path:
+   ```cpp
+   #pragma once
+   #include <filesystem>
+   
+   namespace microregime {
+       constexpr auto PROJECT_ROOT = "C:/path/to/MicroRegimeProject";  // Update this path
+       
+       inline std::filesystem::path get_project_root() {
+           return std::filesystem::path(PROJECT_ROOT);
+       }
+   } // namespace microregime
+   ```
+
+   Make sure to update the paths to match your system's directory structure.
+
 ## Project Structure
 
 ```

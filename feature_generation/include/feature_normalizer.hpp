@@ -16,6 +16,13 @@ public:
     void AddFeatureSet(const FeatureSet& feature_set);
     std::pair<FeatureSet, FeatureSet> NormalizeFeatureSet(const FeatureSet& feature_set);
 
+    double getOldMidprice(int index) {
+        if (index >= window_long.size()) {
+            return 0.0;
+        }
+        return window_long[window_long.size() - index - 1].midprice;
+    }
+
 private:
     std::deque<FeatureSet> window_long;
     std::deque<FeatureSet> window_short;

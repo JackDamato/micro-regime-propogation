@@ -32,25 +32,14 @@ std::pair<FeatureSet, FeatureSet> FeatureProcessor::GetProcessedFeatureSets(cons
 void FeatureProcessor::ProcessPriceAndSpread(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
     feature_set.log_spread = std::log(snapshot.best_ask_price) - std::log(snapshot.best_bid_price);
     double midprice = (snapshot.best_ask_price + snapshot.best_bid_price) / 2;
+    feature_set.midprice = midprice;
 
-    feature_set.price_impact = 0.0;  // Default if conditions not met
-
-    if (snapshot.last_trade_direction != 0 && snapshot.last_trade_price > 0.0) {
-        double inferred_mid = infer_pre_trade_midprice(snapshot);
-        if (inferred_mid > 0.0) {
-            feature_set.price_impact = snapshot.last_trade_direction * (
-                std::log(snapshot.last_trade_price) - std::log(inferred_mid)
-            );
-        }
-    }
-
-    if (cache_.prev_midprice > 0.0) {
-        feature_set.log_return = std::log(midprice) - std::log(cache_.prev_midprice);
+    double old_midprice = feature_normalizer_.getOldMidprice(10'000'000'000 / SNAPSHOT_INTERVAL_NS);
+    if (old_midprice > 0.0) {
+        feature_set.log_return = std::log(midprice) - std::log(old_midprice);
     } else {
         feature_set.log_return = 0.0;
     }
-
-    cache_.prev_midprice = midprice;
 }
 
 
@@ -82,7 +71,7 @@ void FeatureProcessor::ProcessVolatility(const FeatureInputSnapshot& snapshot, F
             ewm_mean = ret;
             ewm_var = ret * ret;
         } else {
-            ewm_var = (1 - alpha) * ewm_var + alpha * (ret - ewm_mean) * (ret - ewm_mean);
+            ewm_var = (1 - alpha) * ewm_var + alpha * (ret * ret);
             ewm_mean = (1 - alpha) * ewm_mean + alpha * ret;
         }
         ewm_count ++;
@@ -120,17 +109,32 @@ void FeatureProcessor::ProcessVolatility(const FeatureInputSnapshot& snapshot, F
 
 // Volume Weighted OFI, Signed Volume Pressure, Order Arrival Rate: USES CACHE OBJECTS
 void FeatureProcessor::ProcessOrderFlow(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
-    // Volume-weighted OFI
-    double ofi = 0.0;
-    for (size_t i = 0; i < DEPTH_LEVELS; ++i) {
-        ofi += snapshot.bid_depth_change_direction[i] * snapshot.bid_sizes[i];
-        ofi -= snapshot.ask_depth_change_direction[i] * snapshot.ask_sizes[i];
+    // --- Improved Order Flow Imbalance (OFI) ---
+    // Parameters
+    constexpr double DEPTH_DECAY = 0.5;          // exponential decay per level
+    constexpr double OFI_SMOOTH_ALPHA = 0.2;     // EMA smoothing
+    constexpr double MIN_TOTAL_VOL = 1e-6;       // prevent div-by-zero
+
+    double raw_ofi = 0.0;
+
+    for (int i = 0; i < DEPTH_LEVELS; ++i) {
+        double weight = std::exp(-i * DEPTH_DECAY);  // top level = 1.0, decays exponentially
+        double bid_contrib = snapshot.bid_depth_change_direction[i] * snapshot.bid_sizes[i] * weight;
+        double ask_contrib = snapshot.ask_depth_change_direction[i] * snapshot.ask_sizes[i] * weight;
+
+        raw_ofi += bid_contrib - ask_contrib;
     }
-    feature_set.ofi = ofi;
+
+    // --- Normalize by recent trade volume (rolling) ---
+    double total_volume = snapshot.rolling_buy_volume + snapshot.rolling_sell_volume;
+    double normalized_ofi = (total_volume > MIN_TOTAL_VOL) ? raw_ofi / total_volume : 0.0;
+
+    // --- Optional Smoothing (EMA)
+    feature_set.ofi = OFI_SMOOTH_ALPHA * normalized_ofi + (1.0 - OFI_SMOOTH_ALPHA) * cache_.prev_ofi;
+    cache_.prev_ofi = feature_set.ofi;
 
     // --- Signed Volume Pressure ---
     double net_signed_volume = snapshot.rolling_buy_volume - snapshot.rolling_sell_volume;
-    double total_volume = snapshot.rolling_buy_volume + snapshot.rolling_sell_volume;
     feature_set.signed_volume_pressure = (total_volume > 0.0) 
         ? net_signed_volume / total_volume 
         : 0.0;
@@ -200,14 +204,14 @@ void FeatureProcessor::ProcessLiquidity(const FeatureInputSnapshot& snapshot, Fe
     feature_set.lob_slope = bid_slope + ask_slope;
 
     // --- Price Gap ---
-    double bid_gap = (DEPTH_LEVELS > 1 && snapshot.bid_prices[1] > 0)
-                     ? snapshot.bid_prices[0] - snapshot.bid_prices[1] : 0.0;
-    double ask_gap = (DEPTH_LEVELS > 1 && snapshot.ask_prices[1] > 0)
-                     ? snapshot.ask_prices[1] - snapshot.ask_prices[0] : 0.0;
-    feature_set.price_gap = bid_gap + ask_gap;
+    double vol_weighted_bid_gap = (snapshot.bid_prices[0] * snapshot.bid_sizes[0] - snapshot.bid_prices[1] * snapshot.bid_sizes[1]) 
+                       / (snapshot.bid_sizes[0] + snapshot.bid_sizes[1]);
+    double vol_weighted_ask_gap = (snapshot.ask_prices[0] * snapshot.ask_sizes[0] - snapshot.ask_prices[1] * snapshot.ask_sizes[1]) 
+                       / (snapshot.ask_sizes[0] + snapshot.ask_sizes[1]);
+    feature_set.price_gap = vol_weighted_bid_gap + vol_weighted_ask_gap;
 }
 
-// Tick Direction Entropy, Reversal Rate, Spread Crossing, Aggressor Bias: USES CACHE OBJECTS
+// Tick Direction Entropy, Reversal Rate, Aggressor Bias: USES CACHE OBJECTS
 void FeatureProcessor::ProcessMicrostructureTransitions(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
     int up = 0, down = 0, zero = 0;
     for (auto dir : *snapshot.rolling_tick_directions) {
@@ -233,11 +237,6 @@ void FeatureProcessor::ProcessMicrostructureTransitions(const FeatureInputSnapsh
         }
     }
     feature_set.reversal_rate = (dirs.size() > 1) ? static_cast<double>(reversals) / dirs.size() : 0.0;
-
-    // --- Spread Crossing ---
-    // If last trade was executed inside the spread
-    feature_set.spread_crossing = (snapshot.last_trade_price > snapshot.best_bid_price &&
-                                    snapshot.last_trade_price < snapshot.best_ask_price) ? 1 : 0;
 
     // --- Aggressor Bias ---
     double sum = std::accumulate(
@@ -269,17 +268,54 @@ void FeatureProcessor::ProcessEngineeredFeatures(const FeatureInputSnapshot& sna
 
     feature_set.shannon_entropy = entropy;
 
-    // --- Liquidity Stress Index ---
-    // Assume cache_.prev_liquidity contains last feature_set.market_depth
-    if (cache_.prev_liquidity > 0.0) {
-        double liquidity_change = (feature_set.market_depth - cache_.prev_liquidity) / cache_.prev_liquidity;
-        feature_set.liquidity_stress = -liquidity_change;  // Inverted: drop in depth = positive stress
-    } else {
-        feature_set.liquidity_stress = 0.0;
+    // --- Liquidity Stress Index with Smoothing ---
+
+    // === Parameters ===
+    constexpr int LEVELS_TO_USE = 5;
+    constexpr double MIN_QUOTE_SIZE = 5.0;
+    constexpr double DISTANCE_DECAY = 10.0;
+    constexpr double STRESS_SMOOTH_ALPHA = 0.1;  // smoothing factor (0.05–0.2 is reasonable)
+
+    // === Compute Weighted Depth Liquidity ===
+    double bid_weighted = 0.0, ask_weighted = 0.0;
+
+    for (int i = 0; i < LEVELS_TO_USE; ++i) {
+        double bid_price = snapshot.bid_prices[i];
+        double ask_price = snapshot.ask_prices[i];
+        int bid_size = snapshot.bid_sizes[i];
+        int ask_size = snapshot.ask_sizes[i];
+
+        if (bid_price > 0.0 && bid_size >= MIN_QUOTE_SIZE) {
+            double dist = snapshot.best_bid_price - bid_price;
+            double weight = std::exp(-dist * DISTANCE_DECAY);
+            bid_weighted += weight * bid_size;
+        }
+
+        if (ask_price > 0.0 && ask_size >= MIN_QUOTE_SIZE) {
+            double dist = ask_price - snapshot.best_ask_price;
+            double weight = std::exp(-dist * DISTANCE_DECAY);
+            ask_weighted += weight * ask_size;
+        }
     }
 
-    // Update cache
-    cache_.prev_liquidity = feature_set.market_depth;
+    double total_weighted_liquidity = bid_weighted + ask_weighted;
+
+    // === Liquidity Stress (Raw & Smoothed) ===
+    double raw_liquidity_stress = 0.0;
+    if (cache_.prev_liquidity > 0.0) {
+        double liquidity_change = (total_weighted_liquidity - cache_.prev_liquidity) / cache_.prev_liquidity;
+        raw_liquidity_stress = -liquidity_change;  // drop = stress
+    }
+
+    // Smooth stress using EMA (optional: clamp huge swings if needed)
+    feature_set.liquidity_stress =
+        STRESS_SMOOTH_ALPHA * raw_liquidity_stress +
+        (1.0 - STRESS_SMOOTH_ALPHA) * cache_.prev_liquidity_stress;
+
+    // === Update Caches ===
+    cache_.prev_liquidity = total_weighted_liquidity;
+    cache_.prev_liquidity_stress = feature_set.liquidity_stress;
+
 }
 
 double FeatureProcessor::infer_pre_trade_midprice(const FeatureInputSnapshot& snap) {

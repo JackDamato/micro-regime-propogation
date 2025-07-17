@@ -4,7 +4,7 @@ project(feature_generation LANGUAGES CXX)
 add_library(feature_generation
     src/core/feature_processor.cpp
     src/core/feature_normalizer.cpp
-    src/core/timestamp_pipeline.cpp
+    src/core/dual_feature_pipeline.cpp
     src/data/features_to_csv.cpp
 )
 

@@ -24,9 +24,11 @@ private:
 
     struct Cache {
         // 1-step history
-        double prev_midprice = 0.0;
         double prev_liquidity = 0.0;
+        double prev_liquidity_stress = 0.0;
+        double prev_ofi = 0.0;
         uint64_t last_arrival_time_ns = 0;
+        double ewm_midprice = 0.0;
         // rolling OFI stats (Welford)
         // int      ofi_n   = 0;
         // double   ofi_mean = 0.0;

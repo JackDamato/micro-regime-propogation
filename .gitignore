@@ -8,8 +8,20 @@ ES/
 SPY/
 data/output/
 output/
+
 # CSV files
 *.csv
+
+# PKL Models
+*.pkl
+
+# Environment files
+environment.hpp
+*.env
+env.py
+
+# PYCACHE
+__pycache__
 
 # Databento folder
 databento-cpp/

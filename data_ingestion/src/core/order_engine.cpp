@@ -52,7 +52,6 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 order_book.ApplyAdd(event.order_id, event.price, event.size, side);
                 track_order(event.order_id, event.instrument, side, event.price);
                 feature_engine->update_events('A');
-                feature_engine->update_rolling_state();
                 break;
             }
             case 'M': {  // Modify
@@ -71,7 +70,6 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 
                 // Update the order info with new price
                 track_order(event.order_id, event.instrument, order_info->side, event.price);
-                feature_engine->update_rolling_state();
                 feature_engine->update_events('M');
                 break;
             }
@@ -89,7 +87,6 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 // Remove the order from tracking
                 untrack_order(event.order_id);
                 feature_engine->update_events('C');
-                feature_engine->update_rolling_state();
                 break;
             }
             case 'R': { // Clear

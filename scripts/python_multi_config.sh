@@ -27,7 +27,7 @@ for asset in "${ASSETS[@]}"; do
     python -c "import pandas as pd
 import os
 output_path = os.path.join('$OUTPUT_DIR', '${asset}_information.csv')
-pd.DataFrame(columns=['long_short', 'avg', 'regime_count', 'AIC', 'BIC', 'SIL', 'DB', 'CH']).to_csv(output_path, index=False)"
+pd.DataFrame(columns=['regime_count', 'AIC', 'BIC', 'SIL', 'DB', 'CH']).to_csv(output_path, index=False)"
 
     for long_short in "${LONG_SHORT_OPTS[@]}"; do
         for avg_opt in "${AVG_OPTS[@]}"; do

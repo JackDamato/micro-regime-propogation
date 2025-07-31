@@ -12,7 +12,7 @@ public:
     ~FeatureProcessor() = default;
 
     FeatureSet GetRawFeatureSet(const FeatureInputSnapshot& snapshot);
-    std::pair<FeatureSet, FeatureSet> GetProcessedFeatureSets(const FeatureSet& raw_feature_set);
+    FeatureSet GetProcessedFeatureSet(const FeatureSet& raw_feature_set);
 private:
     void ProcessPriceAndSpread(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
     void ProcessVolatility(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);

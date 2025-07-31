@@ -18,43 +18,39 @@ public:
     CsvWriter(const std::string& base_filename, const uint64_t snapshot_interval_ns, const std::string& date) {
         // Create output directory if it doesn't exist
         std::string seconds = std::to_string(static_cast<double>(snapshot_interval_ns) / 1000000000);
-        std::string dir_name = "output_" + seconds + "s_L" + std::to_string(LONG_WINDOW_SIZE) + "_S" + std::to_string(SHORT_WINDOW_SIZE) + "_E" + std::to_string(ROLLING_WINDOW);
+        std::string dir_name = "output_Snapshot" + seconds + 
+            "_Window" + std::to_string(WINDOW_SIZE) + 
+            "_Events" + std::to_string(ROLLING_WINDOW);
         std::filesystem::path dir = get_project_root() / "data" / dir_name / date;
         std::cout << "Creating directory: " << dir.string() << std::endl;
         std::filesystem::create_directories(dir);
         
         // Open CSV files for writing
         raw_csv_.open(dir / (base_filename + "_raw.csv"), std::ios::out);
-        norm_short_csv_.open(dir / (base_filename + "_norm_short.csv"), std::ios::out);
-        norm_long_csv_.open(dir / (base_filename + "_norm_long.csv"), std::ios::out);
+        norm_csv_.open(dir / (base_filename + "_norm.csv"), std::ios::out);
         
         // Write CSV headers
         writeCsvHeader(raw_csv_);
-        writeCsvHeader(norm_short_csv_);
-        writeCsvHeader(norm_long_csv_);
+        writeCsvHeader(norm_csv_);
     }
     
     ~CsvWriter() {
         if (raw_csv_.is_open()) raw_csv_.close();
-        if (norm_short_csv_.is_open()) norm_short_csv_.close();
-        if (norm_long_csv_.is_open()) norm_long_csv_.close();
+        if (norm_csv_.is_open()) norm_csv_.close();
     }
     
     void ingest_feature_set(const std::string& symbol,
                            uint64_t timestamp_ns,
                            const FeatureSet& raw_features,
-                           const FeatureSet& normalized_short,
-                           const FeatureSet& normalized_long) override {
+                           const FeatureSet& normalized) override {
         // Write data to respective CSV files
         writeFeatureSet(raw_csv_, timestamp_ns, raw_features);
-        writeFeatureSet(norm_short_csv_, timestamp_ns, normalized_short);
-        writeFeatureSet(norm_long_csv_, timestamp_ns, normalized_long);
+        writeFeatureSet(norm_csv_, timestamp_ns, normalized);
     }
 
 private:
     std::ofstream raw_csv_;
-    std::ofstream norm_short_csv_;
-    std::ofstream norm_long_csv_;
+    std::ofstream norm_csv_;
     
     void writeCsvHeader(std::ofstream& csv) {
         if (!csv.is_open()) return;
@@ -63,11 +59,25 @@ private:
         csv << "timestamp_ns,instrument,";
         
         // Feature fields
-        csv << "midprice,log_spread,log_return,ewm_volatility,realized_variance,"
-            << "directional_volatility,spread_volatility,ofi,signed_volume_pressure,"
-            << "order_arrival_rate,depth_imbalance,market_depth,lob_slope,price_gap,"
-            << "tick_direction_entropy,reversal_rate,aggressor_bias,"
-            << "shannon_entropy,liquidity_stress\n";
+        csv << "midprice,"
+            << "log_spread,"
+            << "log_return,"
+            << "ewm_volatility,"
+            << "realized_variance,"
+            << "directional_volatility,"
+            << "spread_volatility,"
+            << "ofi,"
+            << "signed_volume_pressure,"
+            << "order_arrival_rate,"
+            << "depth_imbalance,"
+            << "market_depth,"
+            << "lob_slope,"
+            << "price_gap,"
+            << "tick_direction_entropy,"
+            << "reversal_rate,"
+            << "aggressor_bias,"
+            << "shannon_entropy,"
+            << "liquidity_stress\n";
     }
     
     void writeFeatureSet(std::ofstream& csv, uint64_t timestamp_ns, const FeatureSet& fs) {
@@ -119,7 +129,7 @@ int main(int argc, char** argv) {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] 
                   << " <timestamp> <base_asset> <future> [snapshot_interval_ns]\n"
-                  << "Example: " << argv[0] << " 20230101 SPY ES 1000000000\n";
+                  << "Example: " << argv[0] << " 20250505 SPY ES 1000000000\n";
         return 1;
     }
     

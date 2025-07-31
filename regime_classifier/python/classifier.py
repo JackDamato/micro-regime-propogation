@@ -2,37 +2,32 @@ import numpy as np
 import pandas as pd
 from hmmlearn import hmm
 from hmmlearn import vhmm
-from constants import FOLDER_NAME, ASSET, REGIME_COUNT, AVG, LONG_SHORT, PCA, PCA_VAR, DROP_COLUMNS
+from constants import FOLDER_NAME, ASSET, REGIME_COUNT, PCA, PCA_VAR, DROP_COLUMNS, DATES
 import os
 from env import PROJECT_ROOT
 
-# Load the data
-long_df = pd.read_csv("{}\\data\\{}\\{}_norm_long.csv".format(PROJECT_ROOT, FOLDER_NAME, ASSET))
-short_df = pd.read_csv("{}\\data\\{}\\{}_norm_short.csv".format(PROJECT_ROOT, FOLDER_NAME, ASSET))
+# ==============================================================
+# ============= Loading Data from Multiple Dates ===============
+# ============= Also concatenating and dropping columns ========
+# ==============================================================
+dfs = []
+lengths = []
+for date in DATES:
+    df = pd.read_csv("{}\\data\\{}\\{}\\{}_norm.csv".format(PROJECT_ROOT, FOLDER_NAME, date, ASSET))
+    dfs.append(df)
+    lengths.append(len(df))
 
-avg_features = (long_df.drop(columns=DROP_COLUMNS, errors='ignore') + \
-                short_df.drop(columns=DROP_COLUMNS, errors='ignore')) / 2
+df = pd.concat(dfs)
 
 # Optional: rename columns to distinguish
-long_features = long_df.drop(columns=DROP_COLUMNS, errors='ignore')
-short_features = short_df.drop(columns=DROP_COLUMNS, errors='ignore')
-
-# Prefix column names for clarity
-long_features = long_features.add_prefix("long_")
-short_features = short_features.add_prefix("short_")
-
-long_short_df = pd.concat([long_features, short_features], axis=1)
-
-# Concatenate horizontally (axis=1)
-if AVG:
-    X = avg_features
-elif LONG_SHORT:
-    X = pd.concat([long_features, short_features], axis=1)
-else:
-    X = long_features
-
+features = df.drop(columns=DROP_COLUMNS, errors='ignore')
+print(str("timestamp_ns" in features.columns))
 # Convert to NumPy array
-X_array = X.to_numpy()
+X_array = features.to_numpy()
+
+# ==============================================================
+# ============= Do PCA if enabled, reducing dimensions =========
+# ==============================================================
 
 if PCA:
     from sklearn.preprocessing import StandardScaler
@@ -48,59 +43,70 @@ if PCA:
     print(f"PCA reduced dimensions from {X_array.shape[1]} to {X_pca.shape[1]}")
     X_array = X_pca
 
+
+
+# ==============================================================
+# ============= Run, fit, and predict HMM ======================    
+# ==============================================================
 np.random.seed(45)
 
 model = hmm.GaussianHMM(
     n_components=REGIME_COUNT,
     covariance_type="full",
-    n_iter=400,
+    n_iter=500,
     init_params="",  # skip 'm' to avoid random mean init
     params="stmc"
 )
 
-model.fit(X_array)
+model.fit(X_array, lengths)
+states = model.predict(X_array, lengths)
 
-# Predict regimes
-states = model.predict(X_array)
 
+# ==============================================================
+# ============= Output Model Information/scores ================
+# ==============================================================
 outfile = f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}_information.csv"
 outfile_dir = os.path.dirname(outfile)
+just_created = False
 if not os.path.exists(outfile_dir):
     os.makedirs(outfile_dir)
+    just_created = True
 
 with open(outfile, "a") as f:
+    if just_created:
+        f.write("regime_count,AIC,BIC,LL,SIL,DB,CH\n")
     # Manually compute AIC and BIC
-    log_likelihood = model.score(X_array)
-    n_samples = X_array.shape[0]
-    n_components = model.n_components
-    n_features = model.n_features
+    log_likelihood = model.score(X_array, lengths)
+    aic = model.aic(X_array, lengths)
+    bic = model.bic(X_array, lengths)
 
-    # Count parameters
-    n_means = n_components * n_features
-    if model.covariance_type == "full":
-        n_covars = n_components * n_features * (n_features + 1) // 2
-    elif model.covariance_type == "diag":
-        n_covars = n_components * n_features
-    else:
-        raise ValueError("Unsupported covariance_type for AIC/BIC calculation")
+    f.write(f"{REGIME_COUNT},{aic},{bic},{log_likelihood},")
 
-    n_trans = n_components * (n_components - 1)
-    n_startprob = n_components - 1
+# ==============================================================
+# ============= Add regimes to DataFrame and save ==============
+# ============= data, model, and model config     ==============
+# ==============================================================
+df["regime"] = states
+# save features with regimes
+df.to_csv(f"{PROJECT_ROOT}\\regime_classifier\\python\\features_with_regimes.csv", index=False)
 
-    n_params = n_means + n_covars + n_trans + n_startprob
-
-    aic = -2 * log_likelihood + 2 * n_params
-    bic = -2 * log_likelihood + n_params * np.log(n_samples)
-
-    f.write(f"{LONG_SHORT},{AVG},{REGIME_COUNT},{aic},{bic},")
-
-# Add to DataFrame if desired
-long_short_df["regime"] = states
-
-X_with_meta = pd.concat([long_df[["timestamp_ns"]], long_short_df], axis=1)
-print("saving to csv")
-X_with_meta.to_csv(f"{PROJECT_ROOT}\\regime_classifier\\python\\features_with_regimes.csv", index=False)
+# make a directory for the model
+model_dir = f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}\\{REGIME_COUNT}"
+if not os.path.exists(model_dir):
+    os.makedirs(model_dir)
 
 # output model pickle
 import joblib
-joblib.dump(model, f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}\\{REGIME_COUNT}\\{LONG_SHORT}_{AVG}\\model.pkl")
+joblib.dump(model, f"{model_dir}\\model.pkl")
+
+# output model params
+outfile = f"{model_dir}\\model_params.txt"
+with open(outfile, "w") as f:
+    f.write("means:\n")
+    f.write(str(model.means_))
+    f.write("\ncovars:\n")
+    f.write(str(model.covars_))
+    f.write("\ntransmat:\n")
+    f.write(str(model.transmat_))
+    f.write("\nstartprob:\n")
+    f.write(str(model.startprob_))

@@ -15,10 +15,8 @@ def visualize_umap(file_name, outdir):
 
     # === Extract Features and Labels (using long_ features) ===
     # Want to visualize with just long_ewm_volatility,long_realized_variance,long_directional_volatility,long_spread_volatility
-    X, y = df.filter(like="long_"), df["regime"]
-    for column in DROP_COLUMNS:
-        X.drop(columns=["long_" + column], errors="ignore", inplace=True)
-    print(X)
+    X, y = df.drop(columns=["regime"]), df["regime"]
+    X.drop(columns=DROP_COLUMNS, errors="ignore", inplace=True)
 
     # === Normalize Features ===
     scaler = StandardScaler()

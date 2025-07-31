@@ -1,58 +1,43 @@
-# Market Data Processing Module
+# Data Ingestion Module
 
-A high-performance C++20 library for processing financial market data, featuring low-latency order book construction, market data ingestion, and feature engineering capabilities. This module serves as the foundation for quantitative research and algorithmic trading systems.
+A C++20 library for processing and normalizing market data for micro-regime classification. This module handles the ingestion of market data, feature extraction, and normalization for use in machine learning models.
 
-## ✨ Features
+## Features
 
-### Core Functionality
-- **Market Data Ingestion**
-  - Native support for Databento DBN format with Zstandard compression
-  - Efficient binary parsing with zero-copy operations
-  - Support for only market by order (MBO) data
+- **Data Processing**
+  - Handles market data events with nanosecond precision
+  - Maintains a rolling window of market state for feature calculation
+  - Configurable depth levels for order book analysis
+  
+- **Feature Extraction**
+  - Real-time calculation of market microstructure features
+  - Normalization of features using configurable window sizes
+  - Efficient storage of historical feature values
 
-### Order Book Management
-- **Real-time Order Book**
-  - Ultra-fast order matching and book building
-  - Support for price-time priority matching
-  - Configurable depth levels for L2/L3 order books
-  - Snapshot and incremental update mechanisms
-
-### Advanced Features
-- **Feature Engineering**
-  - Built-in calculation of market microstructure features
-  - Custom feature registration system
-  - Time-series feature computation
-
-### Performance
-- **Optimized for HFT**
-  - Lock-free data structures where applicable
-  - Memory-efficient data representation
-  - Low-latency event processing pipeline
-
-### Developer Experience
-- **Comprehensive Logging**
-  - Configurable log levels
-  - Custom log sinks
-  - Structured logging support
-- **Testing & Validation**
-  - Extensive unit test coverage
-  - Integration test suite
-  - Performance benchmarking
+- **Performance**
+  - Optimized for low-latency processing
+  - Memory-efficient data structures
+  - Configurable window sizes for different time horizons
 
 ## Dependencies
 
 - C++20 compatible compiler (GCC 10+, Clang 12+, MSVC 2019+)
 - CMake 3.15+
-- [Databento C++ Client Library](https://github.com/databento/databento-cpp)
-- Zstandard (zstd) library
-- OpenSSL
+- Standard Library with C++20 support
+
+## Configuration
+
+Key configuration parameters (defined in `include/common_constants.hpp`):
+
+- `DEPTH_LEVELS`: Number of price levels to maintain in the order book (default: 10)
+- `ROLLING_WINDOW`: Window size for feature input calculations (default: 1500 events)
+- `WINDOW_SIZE`: Window size for feature normalization (default: 30000 events)
+- `SNAPSHOT_INTERVAL_NS`: Interval for taking snapshots of the market state (default: 500ms)
 
 ## Building
 
-1. **Clone the repository**
+1. **Create build directory and run CMake**
    ```bash
-   git clone --recurse-submodules https://github.com/jackdamato/micro-regime-project.git
-   cd micro-regime-project/module1
    mkdir -p build && cd build
    cmake .. -DCMAKE_BUILD_TYPE=Release
    cmake --build .
@@ -63,72 +48,25 @@ A high-performance C++20 library for processing financial market data, featuring
    ctest --output-on-failure
    ```
 
-## Example Usage
+## Project Structure
 
-### Data Requirements
+- `include/`: Header files
+  - `common_constants.hpp`: Global configuration parameters
+  - (Other header files...)
+- `src/`: Implementation files
+- `tests/`: Unit tests
 
-This module processes Market-By-Order (MBO) data in Databento's DBN format. Place your `.dbn.zst` files in the `data/` directory.
+## Usage
 
-### Running Examples
-
-1. **Process DBN file**
-   ```bash
-   ./examples/dbn_reader ../data/ESM3/20240102_093000.dbn.zst
-   ```
-
-2. **Build order book**
-   ```bash
-   ./examples/order_book_builder ../data/ESM3/20240102_093000.dbn.zst
-   ```
-
-3. **Extract features**
-   ```bash
-   ./examples/feature_extractor \
-       --input ../data/ESM3/20240102_093000.dbn.zst \
-       --output features.csv \
-       --features mid_price,spread,order_imbalance
-   ```
-
-## API Overview
-
-### 1. Market Data Processing
+Include the necessary headers and use the provided classes to process market data. The module is designed to be integrated into a larger market data processing pipeline.
 
 ```cpp
-#include <market_data/dbn_reader.hpp>
+#include "include/common_constants.hpp"
+// Other includes...
 
-// Initialize reader
-hft::DbnReader reader;
-if (!reader.open("market_data.dbn.zst")) {
-    std::cerr << "Failed to open file" << std::endl;
-    return 1;
-}
+// Example usage would go here
 ```
 
-### 2. Order Book Management
+## Contributing
 
-```cpp
-#include <order_book/order_book.hpp>
-
-// Create order book
-hft::OrderBook book{"ESM3", {.max_levels = 10}};
-
-// Process events
-hft::MarketEvent event;
-while (reader.next_event(event)) {
-    if (event.type == hft::RecordType::Mbo) {
-        book.process_event(event);
-    }
-}
-```
-
-### 3. Feature Extraction
-
-```cpp
-#include <features/feature_engine.hpp>
-
-// Configure features
-hft::FeatureEngine engine{{"mid_price", "spread", "order_imbalance"}};
-
-// Process market data
-engine.process_event(market_event);
-```
+Please refer to the project's coding standards and submit pull requests for any improvements or bug fixes.

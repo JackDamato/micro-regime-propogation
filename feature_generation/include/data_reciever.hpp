@@ -10,8 +10,7 @@ public:
         const std::string& symbol,
         uint64_t timestamp_ns,
         const FeatureSet& raw_features,
-        const FeatureSet& normalized_long,
-        const FeatureSet& normalized_short
+        const FeatureSet& normalized
     ) = 0;
     virtual ~DataReciever() = default;
 };

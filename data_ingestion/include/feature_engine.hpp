@@ -32,11 +32,11 @@ public:
     
     // Update the engine with a new trade
     void update_trade(double price, double size, int8_t direction);
-    void update_rolling_state();
     void update_events(char event_type);
     // Reset the engine's internal state
     void reset();
-
+    
+    void UpdateMidpriceAndSpread(double midprice, double spread);
     uint64_t most_recent_timestamp_ns = 0;
     
 private:
@@ -45,8 +45,8 @@ private:
     std::string instrument_;
     // Internal state for rolling calculations
     struct RollingState {
-        std::deque<double> mid_prices;
-        std::deque<double> spreads;
+        std::deque<double> midprices; // Take the last 5 minutes of midprices 0.05 seconds between each update.
+        std::deque<double> spreads; // Take the last 5 minutes of spreads 0.05 seconds between each update.
         
         std::deque<int8_t> rolling_trade_directions;
         std::deque<int8_t> tick_directions;

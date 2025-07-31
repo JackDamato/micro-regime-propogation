@@ -1,12 +1,17 @@
-# Module 1: Market Data Ingestion & Order Book Processor - Layout
+# Data Ingestion Module - Layout
 
-## Complete Directory Structure
+## Module Overview
+
+This module handles the ingestion and processing of market data for micro-regime classification. It provides components for reading market data, maintaining order books, and computing features in real-time.
+
+## Directory Structure
 
 ```
-module1/
+data_ingestion/
 ├── include/                      # Public API headers
 │   ├── common_constants.hpp      # System-wide constants and configuration
-│   ├── dbn_reader.hpp           # Interface for reading Databento DBN files
+│   ├── dbn_reader.hpp           # Interface for reading market data files
+│   ├── environment.hpp          # Runtime environment configuration
 │   ├── event_parser.hpp         # Market event parsing and validation
 │   ├── exports.hpp              # Platform-specific export macros
 │   ├── feature_engine.hpp       # Feature computation and management
@@ -14,28 +19,22 @@ module1/
 │   ├── market_event.hpp         # Market event data structures
 │   ├── order_book.hpp           # Order book implementation
 │   ├── order_engine.hpp         # Market event processing engine
-│   └── types.hpp                # Common type definitions and utilities
 ├── src/                         # Implementation source files
 │   ├── core/                    # Core processing components
 │   │   ├── event_parser.cpp    # Market event parsing implementation
 │   │   ├── feature_engine.cpp  # Feature computation logic
 │   │   ├── order_book.cpp      # Order book implementation
-│   │   ├── order_book_metrics.cpp # Order book analytics
 │   │   └── order_engine.cpp    # Event processing implementation
 │   ├── data/                   # Data source handling
-│   │   └── dbn_reader.cpp      # DBN file reading implementation
+│   │   └── dbn_reader.cpp      # Data file reading implementation
 │   └── utils/                  # Utility components
 │       ├── logger.cpp          # Logging utilities
 │       ├── stats.cpp           # Statistical functions
 │       └── timer.cpp           # High-precision timing utilities
 ├── tests/                      # Test suite
-│   ├── CMakeLists.txt          # Test build configuration
-│   ├── test_dbn_reader.cpp     # DBN reader test cases
-│   └── test_pipeline.cpp       # End-to-end pipeline tests
-├── bench/                      # Performance benchmarks
-│   ├── feature_engine_bench.cpp # Feature computation benchmarks
-│   └── order_book_bench.cpp    # Order book performance tests
-├── scripts/                    # Build and utility scripts
+│   ├── test_dbn_reader.cpp     # DBN reader tests
+│   ├── test_pipeline.cpp       # Pipeline end-to-end tests
+│   └── bench_dbn_reader.cpp    # DBN reader benchmark
 ├── CMakeLists.txt              # Main build configuration
 └── README.md                   # Module documentation
 ```
@@ -70,9 +69,6 @@ module1/
 
 9. **order_engine.hpp**  
    Orchestrates the processing of market events through the order book and feature pipeline.
-
-10. **types.hpp**  
-    Defines common types, enums, and utility functions used throughout the codebase.
 
 ### Core Implementation (`src/core/`)
 
@@ -112,12 +108,8 @@ module1/
 2. **test_pipeline.cpp**  
    End-to-end tests for the market data processing pipeline.
 
-### Benchmarks (`bench/`)
-1. **feature_engine_bench.cpp**  
-   Performance benchmarks for feature computation.
-
-2. **order_book_bench.cpp**  
-   Microbenchmarks for order book operations.
+3. **bench_dbn_reader.cpp**  
+   Performance benchmarks for DBN file reader.
 
 ### Build System
 1. **CMakeLists.txt**  

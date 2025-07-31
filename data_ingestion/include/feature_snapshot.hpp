@@ -30,8 +30,8 @@ struct FeatureInputSnapshot {
     int adds_since_last_snapshot;
 
     // Rolling windows.
-    const std::deque<double>* rolling_midprices;
-    const std::deque<double>* rolling_spreads;
+    const std::deque<double>* rolling_midprices; // Take the last 5 minutes of midprices 0.05 seconds between each update.
+    const std::deque<double>* rolling_spreads;   // Take the last 5 minutes of spreads 0.05 seconds between each update.
     const std::deque<int8_t>* rolling_tick_directions; // +1, 0, -1
     const std::deque<int8_t>* rolling_trade_directions;
 

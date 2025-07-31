@@ -43,7 +43,7 @@ FeatureInputSnapshot FeatureEngine::generate_snapshot_from_l3(
     double mid_price = (snapshot.best_bid_price + snapshot.best_ask_price) / 2.0;
     double spread = snapshot.best_ask_price - snapshot.best_bid_price;
     
-    snapshot.rolling_midprices = &rolling_state_.mid_prices;
+    snapshot.rolling_midprices = &rolling_state_.midprices;
     snapshot.rolling_spreads = &rolling_state_.spreads;
     snapshot.rolling_tick_directions = &rolling_state_.tick_directions;
     snapshot.rolling_trade_directions = &rolling_state_.rolling_trade_directions;
@@ -116,30 +116,6 @@ void FeatureEngine::reset() {
 }
 
 
-void FeatureEngine::update_rolling_state() {
-    double mid_price = order_book_.GetMidPrice();
-    double spread = order_book_.GetSpread();
-
-    rolling_state_.mid_prices.push_back(mid_price);
-    rolling_state_.spreads.push_back(spread);
-
-    if (rolling_state_.mid_prices.size() > 1) {
-        auto it = rolling_state_.mid_prices.rbegin();
-        double current = *it;
-        double previous = *(++it);
-        rolling_state_.tick_directions.push_back((current > previous) ? 1 : ((current < previous) ? -1 : 0));
-    } else {
-        rolling_state_.tick_directions.push_back(0);
-    }
-
-    if (rolling_state_.mid_prices.size() > ROLLING_WINDOW) {
-        rolling_state_.mid_prices.pop_front();
-        rolling_state_.spreads.pop_front();
-        rolling_state_.tick_directions.pop_front();
-    }
-}
-
-
 void FeatureEngine::update_events(char event_type) {
     if (event_type == 'A') {
         rolling_state_.adds_since_last_snapshot++;
@@ -147,5 +123,28 @@ void FeatureEngine::update_events(char event_type) {
     rolling_state_.recent_event_types.push_back(event_type);
     if (rolling_state_.recent_event_types.size() > ROLLING_WINDOW) {
         rolling_state_.recent_event_types.pop_front();
+    }
+}
+
+
+void FeatureEngine::UpdateMidpriceAndSpread(double midprice, double spread) {
+    rolling_state_.midprices.push_back(midprice);
+    rolling_state_.spreads.push_back(spread);
+    // 3 minutes worth of 10 HZ = 10 * 60 * 3 = 1800
+    if (rolling_state_.midprices.size() > 1) {
+        auto it = rolling_state_.midprices.rbegin();
+        double current = *it;
+        double previous = *(++it);
+        rolling_state_.tick_directions.push_back((current > previous) ? 1 : ((current < previous) ? -1 : 0));
+    } else {
+        rolling_state_.tick_directions.push_back(0);
+    }
+
+    if (rolling_state_.tick_directions.size() > ROLLING_WINDOW) {
+        rolling_state_.tick_directions.pop_front();
+    }
+    if (rolling_state_.midprices.size() > 1800) {
+        rolling_state_.midprices.pop_front();
+        rolling_state_.spreads.pop_front();
     }
 }

@@ -2,7 +2,7 @@
 
 # Build Outputs
 build/
-
+regime_classifier/python/run_outputs/old_data
 # Data files
 ES/
 SPY/

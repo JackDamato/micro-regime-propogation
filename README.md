@@ -1,224 +1,138 @@
-# Market Microstructure Regime Analysis System
+Here’s a refined README that frames the project as a research repository with a stronger thesis orientation, while accurately reflecting the current development stage:
 
-A high-performance C++ system for analyzing market microstructure regimes, modeling their propagation between assets, and performing risk analysis using Monte Carlo simulations.
+---
 
-## Project Overview
+# Market Microstructure Regime Dynamics & Tail Risk Modeling
 
-This system is designed to analyze the market microstructure of various assets and detect regimes characterized by distinct market microstructure conditions. The primary goals of this project are to:
-1. Reconstruct order books from high-frequency market data
-2. Extract meaningful features from the order book that capture the underlying market microstructure conditions
-3. Use machine learning techniques to classify the market regimes based on the extracted features
-4. Model the propagation of regimes between related assets, enabling the prediction of regime transitions in other assets
-5. Perform regime-adaptive risk analysis using Monte Carlo simulations, providing a more accurate and robust assessment of potential risks and opportunities in the markets.
+*A research framework for learning market regimes from microstructure signals and simulating regime-adaptive tail risks using Neural PDEs*
 
-The main theories behind this system are: 
-1. Market microstructure regimes are predictable and have fairly consistent patterns. 
-2. Micro-regimes between an fast-moving asset and a slow-moving asset that have a semantic relationship, like a future and its spot, are related, and the fast-moving asset can be used to predict the slow-moving asset.
-3. Combining these two ideas leads us to the idea that we can use fast-moving asset regimes to assist in predicting slow regimes, and use those regime predictions to model risk better through better parameterized Monte Carlo simulations.
+## Research Thesis
+
+Financial markets exhibit nonlinear phase transitions between distinct **microstructure regimes** (e.g., liquid, volatile, crisis). Traditional risk models fail to capture these dynamics because they:
+
+1. **Ignore regime-dependent mechanics** (e.g., liquidity withdrawal during crises alters price diffusion).  
+2. **Underestimate cross-asset propagation** (e.g., futures → spot contagion).  
+3. **Use static distributions** that don’t adapt to latent market states.  
+
+This project proposes:  
+- **Regimes as learnable latent states** that govern market dynamics.  
+- **Neural Partial Differential Equations (NPDEs)** to model regime-specific price formation.  
+- **Microstructure-aware simulations** for more accurate VaR/CVaR.  
 
 ```mermaid
-graph TD
-    A[Raw Market Data] --> B[Data Ingestion]
-    B --> C[Feature Generation]
-    C --> D[Regime Classification]
-    D --> E[Propagation Modeling]
-    E --> F[Risk Analysis]
-    F --> G[Visualization & Reporting]
+graph LR
+    A[Microstructure Features] --> B[Regime Classifier]
+    B --> C[NPDE Mechanics]
+    C --> D[Monte Carlo VaR]
+    D --> E[Tail Risk Insights]
 ```
+
+## Current Development Status
+
+| Component               | Status                          | Next Steps                     |
+|-------------------------|---------------------------------|--------------------------------|
+| Feature Engineering     | Redesign in progress            | MI/PCA for feature selection  |
+| Regime Classification   | Testing HMM/GHMM/HSMM variants  | Interpretability validation    |
+| NPDE/LSTM Framework     | Research phase                  | Prototype per-regime NPDEs     |
+| Propagation Models      | Design phase                    | Granger causality baseline     |
+
+## Methodology
+
+### 1. Feature Space Construction *(Active Redesign)*
+- **Inputs**: Order book events (MBO), trades, derived signals  
+- **Selection Criteria**:  
+  - Mutual Information with regime labels  
+  - Nonlinear redundancy (t-SNE clustering)  
+- **Key Features**:  
+  - *Directional volatility*  
+  - *LOB slope* (liquidity gradient)  
+  - *Order Flow Imbalance (OFI)*  
+  - *Vol-of-vol* (higher-order dynamics)  
+
+### 2. Regime Learning *(Testing Phase)*
+- **Models**:  
+  - **HMM**: Baseline Markov transitions  
+  - **HSMM**: Duration-aware regimes  
+  - **GMM-tSNE**: Nonparametric alternative  
+- **Validation**:  
+  - Silhouette score ≥ 0.6  
+  - Crisis regime recall > 90%  
+
+### 3. Neural PDE Dynamics *(Future Work)*
+- **Per-Regime NPDEs**:  
+  ```math
+  \frac{\partial S_t}{\partial t} = f_\theta^{s_t}(S_t, \nabla \text{LOB}_t, \text{OFI}_t)
+  ```
+- **Cross-Asset Coupling**:  
+  Forcing terms $g_\phi(S^B_t, s^B_t)$ model lead-lag effects.  
+
+### 4. Simulation Pipeline
+1. Classify regime $s_t$ from normalized features  
+2. Query regime-specific NPDE + LSTM feature forecaster  
+3. Step simulation:  
+   ```python
+   dS_t = NPDE(s_t)(S_t, raw_features) + λ·g_ϕ(S^B_t)
+   S_{t+1} = S_t + dS_t + σ_t dW_t
+   ```
+4. Compute VaR/CVaR from joint paths  
 
 ## System Architecture
 
-### 1. Data Ingestion Module
-- Processes Databento MBO (Market-By-Order) historical data
-- Reconstructs limit order books for each instrument
-- Handles market events (add, modify, cancel, trade, fill)
-
 ```mermaid
-flowchart LR
-    A[Databento DBN] --> B[Event Parser]
-    B --> C[Order Engine]
-    C --> D[Order Book Manager]
-    D --> E[Market State]
+flowchart TB
+    subgraph Data Layer
+        A[Raw MBO Data] --> B[Order Book Reconstruction]
+        B --> C[Feature Engine]
+    end
+
+    subgraph Learning Layer
+        C --> D[Regime Classifier]
+        D --> E[NPDE Trainer]
+        D --> F[LSTM Forecaster]
+    end
+
+    subgraph Simulation
+        E --> G[Monte Carlo Engine]
+        F --> G
+        G --> H[Risk Metrics]
+    end
 ```
 
-### 2. Feature Generation Module
-- Computes order book features
-- Normalizes features across different time windows
-- Handles feature engineering for regime classification
-```mermaid
-flowchart LR
-    A[Market State] --> B[Feature Engine]
-    B --> C[Feature Processor]
-    C --> D[Feature Normalizer]
-    D --> E[Feature Set]
-    E --> F[Data Receiver]
-```
+## Key Innovations
 
-### 3. Regime Classification Module
-- Implements HMM and/or other ML models
-- Classifies market regimes in real-time
-- Provides regime probabilities and confidence scores
+1. **Regime-Dependent Mechanics**  
+   - NPDEs learn distinct drift/diffusion laws per regime.  
+   - Captures liquidity-driven nonlinearities.  
 
-### 4. Propagation Modeling
-- Analyzes lead-lag relationships between assets
-- Models regime transitions and propagation
-- Implements Granger causality tests
+2. **Provable Stability**  
+   - Lyapunov constraints on NPDE solutions.  
+   - Adjoint methods for gradient control.  
 
-### 5. Monte Carlo Engine (CUDA)
-- Parallel simulation of market scenarios
-- Regime-adaptive simulation parameters
-- High-performance computation using CUDA
-
-### 6. Risk Analysis
-- Computes Value-at-Risk (VaR) and Expected Shortfall
-- Regime-conditional risk metrics
-- Stress testing and scenario analysis
-
-## Key Features
-
-- **High Performance**: Optimized C++ implementation for low-latency processing
-- **Modular Design**: Independent components with clean interfaces
-- **Extensible**: Easy to add new features and models
-- **Scalable**: Handles high-frequency data with low latency
-- **Reproducible**: Deterministic order book reconstruction
+3. **Microstructure-Conscious Risk**  
+   - Simulated LOB dynamics feed back into price paths.  
+   - No "fixed correlation" assumptions.  
 
 ## Getting Started
 
-### Prerequisites
+### Dependencies
+- **C++20**: For high-performance core  
+- **CUDA**: NPDE solving (future)  
+- **Python**: Analysis/visualization  
+- Visit module readmes for external dependencies
 
-- C++20 compatible compiler
-- CUDA Toolkit (for Monte Carlo simulations)
-- CMake 3.15+
-- Conan package manager
-- Python 3.8+ (for analysis scripts)
-
-### Building the Project
-
-#### Cloning databento-cpp
-
-Clone the [databento-cpp](https://github.com/databento/databento-cpp) repository and add it as a submodule to your project.
-
-#### Installing dependencies
-
-Install the following dependencies using [vcpkg](https://github.com/microsoft/vcpkg) or by placing them adjacent to your project:
-
-- [OpenSSL](https://www.openssl.org/) (minimum version 3.0)
-- [Libcrypto](https://www.openssl.org/docs/man1.1.1/man3/crypto.html)
-- [Zstandard (zstd)](https://github.com/facebook/zstd)
-- [nlohmann_json](https://github.com/nlohmann/json) (header-only)
-- [cpp-httplib](https://github.com/yhirose/cpp-httplib) (header-only)
-- [date](https://github.com/HowardHinnant/date) (header-only)
-
-Make sure to add the following directories to your `CMAKE_PREFIX_PATH`:
-
-- `vcpkg/installed/x64-windows`
-- `databento-cpp/deps`
-
-```bash
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_TOOLCHAIN_FILE="path/to/vcpkg/scripts/buildsystems/vcpkg.cmake"
-cmake --build . --config Release
-```
-
-### Environment Setup
-
-1. **Python Environment**
-   Create an `env.py` file in `./regime_classifier/python/` with the following content:
-   ```python
-   # Project root directory
-   PROJECT_ROOT = r"C:\\path\\to\\MicroRegimeProject"  # Update this path
+### Development Phases
+1. **Feature Redesign** (`feature_engineering/`)  
+   - Run MI/PCA analysis:  
+   ```bash
+   python -m feature_engineering.select --input ./data/lob_features.parquet
    ```
-
-2. **C++ Environment**
-   Create a `environment.hpp` file in `./data_ingestion/include/` with the project root path:
-   ```cpp
-   #pragma once
-   #include <filesystem>
-   
-   namespace microregime {
-       constexpr auto PROJECT_ROOT = "C:/path/to/MicroRegimeProject";  // Update this path
-       
-       inline std::filesystem::path get_project_root() {
-           return std::filesystem::path(PROJECT_ROOT);
-       }
-   } // namespace microregime
+2. **Regime Testing** (`regime_classifier/`)  
+   - Validate HMM variants with Silhouette Score, and Regime Separation:  
+   ```bash
+   python -m regime_classifier.train --model hsmm --data ./data/normalized.parquet
    ```
-
-   Make sure to update the paths to match your system's directory structure.
-
-## Project Structure
-
-```
-MicroRegimeProject/
-├── data_ingestion/      # Module 1: Market data processing
-├── feature_generation/  # Module 2: Feature extraction
-├── regime_classifier/   # Module 3: Regime classification
-├── propagation_model/   # Module 4: Regime propagation
-├── monte_carlo/         # Module 5: CUDA simulations
-├── risk_analysis/       # Module 6: Risk metrics
-└── validation/          # Module 7: Verification & benchmarking
-```
-
-## Performance Considerations
-
-- **Memory Efficiency**: Custom allocators for high-frequency data
-- **Parallel Processing**: Multi-threading and GPU acceleration
-- **Cache Optimization**: Data-oriented design for better cache utilization
-- **Zero-copy**: Minimizing data movement between components
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+3. **NPDE Prototyping** *(Future)*  
+   - See `prototypes/npde_exploration.ipynb`
 
 ## License
-
-MIT License
-
-## Contact
-
-Email: jackdamato05@gmail.com
-
-Github: https://github.com/jackdamato05
-
-LinkedIn: https://www.linkedin.com/in/jack-damato/
-
-## Key Diagrams
-
-### Data Flow
-
-```mermaid
-sequenceDiagram
-    participant D as Databento
-    participant I as Data Ingestion
-    participant F as Feature Generation
-    participant R as Regime Classification
-    participant P as Propagation Modeling
-    participant M as Monte Carlo
-    participant V as Risk Analysis
-    
-    D->>I: DBN File
-    I->>F: Reconstructed Order Book
-    F->>R: Normalized Features
-    R->>P: Regime Probabilities
-    P->>M: Regime-adaptive Params
-    M->>V: Simulated Paths
-    V->>V: Risk Metrics
-```
-
-### Module Dependencies
-
-```mermaid
-graph TD
-    DBN[Databento] --> A[Data Ingestion]
-    A --> B[Feature Generation]
-    B --> C[Regime Classification]
-    C --> D[Propagation Modeling]
-    D --> E[Monte Carlo]
-    E --> F[Risk Analysis]
-    C --> F
-    D --> C
-```
+MIT (Open Academic Use Encouraged)

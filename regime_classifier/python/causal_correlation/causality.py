@@ -7,15 +7,24 @@ from statsmodels.tsa.stattools import grangercausalitytests
 from sklearn.preprocessing import StandardScaler
 from constants import DROP_COLUMNS
 from hmmlearn import hmm
+from constants import PROJECT_ROOT
 # from highfrequency import hayashi_yoshida
 
 np.random.seed(45)
 
+
+seconds = "0.50"
+window_size = "7200"
+rolling_window = "1200"
+date_range = "20250505-20250506"
+
+folder_name = "output_Sec" + seconds + "_Long" + window_size + "_Events" + rolling_window;
+
 # === Configuration ===
-SPY_MODEL_PATH = "C:\\Users\\jackd\\OneDrive\\Documents\\MicroRegimeProject\\regime_classifier\\python\\data\\output_0.50S_7200_1200_2000\\base_SPY\\5\\False_False\\model.pkl"
-ES_MODEL_PATH = "C:\\Users\\jackd\\OneDrive\\Documents\\MicroRegimeProject\\regime_classifier\\python\\data\\output_0.50S_7200_1200_2000\\future_ES\\5\\False_False\\model.pkl"
-SPY_DATA_PATH = "C:\\Users\\jackd\\OneDrive\\Documents\\MicroRegimeProject\\data\\output_0.50S_7200_1200_2000\\base_SPY_norm_long.csv"
-ES_DATA_PATH = "C:\\Users\\jackd\\OneDrive\\Documents\\MicroRegimeProject\\data\\output_0.50S_7200_1200_2000\\future_ES_norm_long.csv"
+SPY_MODEL_PATH = PROJECT_ROOT + "\\regime_classifier\\python\\data\\" + folder_name + "\\base_SPY\\5\\False_False\\model.pkl"
+ES_MODEL_PATH = PROJECT_ROOT + "\\regime_classifier\\python\\data\\" + folder_name + "\\future_ES\\5\\False_False\\model.pkl"
+SPY_DATA_PATH = PROJECT_ROOT + "\\data\\" + folder_name + "\\" + date_range + "\\base_SPY_norm.csv"
+ES_DATA_PATH = PROJECT_ROOT + "\\data\\" + folder_name + "\\" + date_range + "\\future_ES_norm.csv"
 TIMESTAMP_COL = "timestamp_ns"
 
 # === Load Models ===

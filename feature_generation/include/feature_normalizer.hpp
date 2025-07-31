@@ -14,18 +14,17 @@ public:
     ~FeatureNormalizer() = default;
 
     void AddFeatureSet(const FeatureSet& feature_set);
-    std::pair<FeatureSet, FeatureSet> NormalizeFeatureSet(const FeatureSet& feature_set);
+    FeatureSet NormalizeFeatureSet(const FeatureSet& feature_set);
 
     double getOldMidprice(int index) {
-        if (index >= window_long.size()) {
+        if (index >= window.size()) {
             return 0.0;
         }
-        return window_long[window_long.size() - index - 1].midprice;
+        return window[window.size() - index - 1].midprice;
     }
 
 private:
-    std::deque<FeatureSet> window_long;
-    std::deque<FeatureSet> window_short;
+    std::deque<FeatureSet> window;
 
     // valid keys:
     // log_spread, price_impact, log_return, 
@@ -34,12 +33,7 @@ private:
     // market_depth, lob_slope, price_gap, 
     // shannon_entropy, liquidity_stress
 
-    // long-window
-    std::unordered_map<std::string, double> feature_sums_long;
-    std::unordered_map<std::string, double> feature_sums_2_long;
-
-    // short-window
-    std::unordered_map<std::string, double> feature_sums_short;
-    std::unordered_map<std::string, double> feature_sums_2_short;
+    std::unordered_map<std::string, double> feature_sums;
+    std::unordered_map<std::string, double> feature_sums_2;
 };
 } // namespace microregime

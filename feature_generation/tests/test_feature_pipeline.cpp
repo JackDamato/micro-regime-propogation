@@ -32,6 +32,7 @@ public:
         std::string symbol;
         uint64_t timestamp_ns;
         FeatureSet raw;
+        FeatureSet norm;
     };
 
     std::deque<SnapshotRecord> snapshots;
@@ -39,8 +40,7 @@ public:
     void ingest_feature_set(const std::string& symbol,
                             uint64_t timestamp_ns,
                             const FeatureSet& raw_features,
-                            const FeatureSet&,
-                            const FeatureSet&) override {
+                            const FeatureSet& norm_features) override {
         snapshots.push_back({symbol, timestamp_ns, raw_features});
         print_features(raw_features, symbol);
         if (snapshots.size() > 100) {

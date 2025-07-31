@@ -124,7 +124,7 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
             raw_features.timestamp_ns = snapshot.timestamp_ns;
             
             // Then get normalized features
-            auto [normalized_features_long, normalized_features_short] = feature_processor.GetProcessedFeatureSets(raw_features);
+            auto normalized_features = feature_processor.GetProcessedFeatureSet(raw_features);
 
             
             // Print the feature sets
@@ -133,8 +133,7 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
             std::cout << "===========================================\n";
             
             print_feature_set(raw_features, "Raw Features");
-            // print_feature_set(normalized_features_long, "Normalized Features (20000 Window)");
-            // print_feature_set(normalized_features_short, "Normalized Features (1500 Window)");
+            // print_feature_set(normalized_features, "Normalized Features");
             
             // Basic validation
             EXPECT_NE(raw_features.timestamp_ns, 0) << "Timestamp should be set";

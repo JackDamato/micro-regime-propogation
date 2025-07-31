@@ -6,7 +6,7 @@ enable_testing()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
+set(CMAKE_CXX_COMPILER "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.43.34808/bin/Hostx64/x64/cl.exe")
 set(CMAKE_TOOLCHAIN_FILE "C:/Users/jackd/OneDrive/Documents/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 # Force Serialize (to avoid pdb C1090 error)
@@ -50,4 +50,3 @@ endif()
 # Add my modules
 add_subdirectory(data_ingestion)
 add_subdirectory(feature_generation)
-

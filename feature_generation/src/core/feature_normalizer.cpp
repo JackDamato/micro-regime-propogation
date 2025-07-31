@@ -42,33 +42,21 @@ void FeatureNormalizer::AddFeatureSet(const FeatureSet& feature_set) {
     };
 
     // --- Long window update ---
-    window_long.push_back(feature_set);
-    update_sums(feature_set, feature_sums_long, feature_sums_2_long);
+    window.push_back(feature_set);
+    update_sums(feature_set, feature_sums, feature_sums_2);
 
-    if (window_long.size() > LONG_WINDOW_SIZE) {
-        update_sums(window_long.front(), feature_sums_long, feature_sums_2_long, -1.0);
-        window_long.pop_front();
-    }
-
-    // --- Short window update ---
-    window_short.push_back(feature_set);
-    update_sums(feature_set, feature_sums_short, feature_sums_2_short);
-
-    if (window_short.size() > SHORT_WINDOW_SIZE) {
-        update_sums(window_short.front(), feature_sums_short, feature_sums_2_short, -1.0);
-        window_short.pop_front();
+    if (window.size() > WINDOW_SIZE) {
+        update_sums(window.front(), feature_sums, feature_sums_2, -1.0);
+        window.pop_front();
     }
 }
 
 
-std::pair<FeatureSet, FeatureSet> FeatureNormalizer::NormalizeFeatureSet(const FeatureSet& feature_set) {
-    FeatureSet normalized_feature_set_long;
-    FeatureSet normalized_feature_set_short;
+FeatureSet FeatureNormalizer::NormalizeFeatureSet(const FeatureSet& feature_set) {
+    FeatureSet normalized_feature_set;
 
-    normalized_feature_set_long.timestamp_ns = feature_set.timestamp_ns;
-    normalized_feature_set_long.instrument = feature_set.instrument;
-
-    normalized_feature_set_short = normalized_feature_set_long;
+    normalized_feature_set.timestamp_ns = feature_set.timestamp_ns;
+    normalized_feature_set.instrument = feature_set.instrument;
 
     auto safe_zscore = [](double x, double sum, double sum2, size_t n, const std::string& field) {
         double mean = sum / n;
@@ -80,24 +68,18 @@ std::pair<FeatureSet, FeatureSet> FeatureNormalizer::NormalizeFeatureSet(const F
         return (x - mean) / stddev;
     };
 
-    const size_t n_long = window_long.size();
-    const size_t n_short = window_short.size();
+    const size_t n = window.size();
 
     for (const auto& [name, member] : kFeatures) {
         double x = feature_set.*member;
 
         // Long window
-        double sum_long = feature_sums_long[name];
-        double sum2_long = feature_sums_2_long[name];
-        normalized_feature_set_long.*member = safe_zscore(x, sum_long, sum2_long, n_long, name);
-
-        // Short window
-        double sum_short = feature_sums_short[name];
-        double sum2_short = feature_sums_2_short[name];
-        normalized_feature_set_short.*member = safe_zscore(x, sum_short, sum2_short, n_short, name);
+        double sum = feature_sums[name];
+        double sum2 = feature_sums_2[name];
+        normalized_feature_set.*member = safe_zscore(x, sum, sum2, n, name);
     }
 
-    return std::make_pair(normalized_feature_set_long, normalized_feature_set_short);
+    return normalized_feature_set;
 }
 
 } // namespace microregime

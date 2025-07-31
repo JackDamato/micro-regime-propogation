@@ -24,7 +24,7 @@ FeatureSet FeatureProcessor::GetRawFeatureSet(const FeatureInputSnapshot& snapsh
     return feature_set;
 }
 
-std::pair<FeatureSet, FeatureSet> FeatureProcessor::GetProcessedFeatureSets(const FeatureSet& raw_feature_set) {
+FeatureSet FeatureProcessor::GetProcessedFeatureSet(const FeatureSet& raw_feature_set) {
     return feature_normalizer_.NormalizeFeatureSet(raw_feature_set);
 }
 

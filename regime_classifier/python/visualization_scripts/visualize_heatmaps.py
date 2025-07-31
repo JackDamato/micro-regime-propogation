@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from constants import FOLDER_NAME, ASSET, REGIME_COUNT, SHOW_GRAPHS, AVG, LONG_SHORT
+from constants import FOLDER_NAME, ASSET, REGIME_COUNT, SHOW_GRAPHS, DROP_COLUMNS
 
-def plot_heatmap(data, title, counts, outdir):
+def plot_heatmap(data, counts, outdir):
     """
     Plot a heatmap of the provided data.
 
@@ -13,7 +13,7 @@ def plot_heatmap(data, title, counts, outdir):
     """
     plt.figure(figsize=(12, 16))  # Adjusted dimensions for vertical layout
     sns.heatmap(data.T, annot=False, cmap="coolwarm", center=0, vmin=-1.5, vmax=1.5, cbar_kws={"label": "Mean Z-score"})
-    plt.title("Feature Heatmap Across Regimes ({})".format(title))
+    plt.title("Feature Heatmap Across Regimes")
     plt.xlabel("Regime")
     plt.ylabel("Feature")
     plt.xticks(rotation=45, ha='right')
@@ -23,7 +23,7 @@ def plot_heatmap(data, title, counts, outdir):
         plt.text(i + 0.5, -1, f"n={count}", ha='center', va='bottom')
     plt.tight_layout()
 
-    plt.savefig(f"{outdir}/feature_heatmap_{title}.png")
+    plt.savefig(f"{outdir}/feature_heatmap.png")
     plt.close()
     # if SHOW_GRAPHS:
     #     plt.show()
@@ -39,26 +39,8 @@ def regime_data_analysis(file_name, outdir):
 
     # Split into short and long features
     counts = df["regime"].value_counts().sort_index()
-    short_features = df.filter(like="short_")
-    long_features = df.filter(like="long_")
-    short_features["regime"] = df["regime"]
-    long_features["regime"] = df["regime"]
-
+    features = df.drop(columns=DROP_COLUMNS, errors='ignore')
     # Calculate means
-    short_feature_means = short_features.groupby("regime").mean()
-    long_feature_means = long_features.groupby("regime").mean()
-
-    # remove prefixes so we can actually subtract
-    long_features.columns = long_features.columns.str.replace("long_", "")
-    short_features.columns = short_features.columns.str.replace("short_", "")
-
-
-    # Calculate averages
-    avg_features = (long_features + short_features) / 2
-    avg_features["regime"] = df["regime"]
-    avg_feature_means = avg_features.groupby("regime").mean()
-    
+    feature_means = features.groupby("regime").mean()
     # Plot heatmaps
-    plot_heatmap(long_feature_means, "long", counts, outdir)
-    plot_heatmap(short_feature_means, "short", counts, outdir)
-    plot_heatmap(avg_feature_means, "avg", counts, outdir)
+    plot_heatmap(feature_means, counts, outdir)

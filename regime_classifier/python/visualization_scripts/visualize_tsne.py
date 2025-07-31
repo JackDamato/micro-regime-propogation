@@ -8,7 +8,7 @@ import seaborn as sns
 from constants import FOLDER_NAME, ASSET, REGIME_COUNT, SHOW_GRAPHS, DROP_COLUMNS
 from env import PROJECT_ROOT
 
-def visualize_tsne(file_name):
+def visualize_tsne(file_name, outdir):
     # Load your CSVs (change filenames if needed)
     df = pd.read_csv(file_name)
 
@@ -16,11 +16,9 @@ def visualize_tsne(file_name):
     df.drop(columns=["timestamp_ns"], errors="ignore", inplace=True)
     
     # Extract long features only
-    X = df.drop(columns=["regime"]).filter(like="long_")
-    for column in DROP_COLUMNS:
-        X.drop(columns=["long_" + column], errors="ignore", inplace=True)
-
     y = df["regime"]
+    X = df.drop(columns=["regime"])
+    X.drop(columns=DROP_COLUMNS, errors="ignore", inplace=True)
 
     print(f"Processing: {len(y.unique())}")
     
@@ -48,6 +46,6 @@ def visualize_tsne(file_name):
     ax.add_artist(legend)
 
     plt.tight_layout()
-    plt.savefig("{}\\regime_classifier\\python\\run_outputs\\{}\\{}\\{}\\tsne.png".format(PROJECT_ROOT, FOLDER_NAME, ASSET, REGIME_COUNT))
+    plt.savefig("{}/tsne.png".format(outdir))
     if SHOW_GRAPHS:
         plt.show()

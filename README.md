@@ -1,7 +1,3 @@
-Here’s a refined README that frames the project as a research repository with a stronger thesis orientation, while accurately reflecting the current development stage:
-
----
-
 # Market Microstructure Regime Dynamics & Tail Risk Modeling
 
 *A research framework for learning market regimes from microstructure signals and simulating regime-adaptive tail risks using Neural PDEs*

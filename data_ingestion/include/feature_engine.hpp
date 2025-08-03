@@ -23,20 +23,21 @@ public:
     FeatureEngine& operator=(FeatureEngine&&) = delete; // move assignment Obj& operator=(Obj&&)
     
     // Automatically updates rolling state, trade data, and depth changes before returning a full snapshot.
-    FeatureInputSnapshot generate_snapshot();
+    FeatureInputSnapshot generate_snapshot(uint64_t timestamp_ns);
     
     // Static helper to generate a snapshot from an L3 snapshot
-    FeatureInputSnapshot generate_snapshot_from_l3(
+    static FeatureInputSnapshot generate_snapshot_from_l3(
         const L3Snapshot& l3_snapshot, 
         uint64_t timestamp_ns);
     
     // Update the engine with a new trade
-    void update_trade(double price, double size, int8_t direction);
+    void update_trade(double price, double size, int8_t direction, uint64_t timestamp_ns);
+    void update_add(double size, int8_t direction, uint64_t timestamp_ns);
     void update_events(char event_type);
     // Reset the engine's internal state
     void reset();
     
-    void UpdateMidpriceAndSpread(double midprice, double spread);
+    void UpdateRollingStats();
     uint64_t most_recent_timestamp_ns = 0;
     
 private:
@@ -48,15 +49,26 @@ private:
         std::deque<double> midprices; // Take the last 5 minutes of midprices 0.05 seconds between each update.
         std::deque<double> spreads; // Take the last 5 minutes of spreads 0.05 seconds between each update.
         
-        std::deque<int8_t> rolling_trade_directions;
         std::deque<int8_t> tick_directions;
         std::deque<char> recent_event_types;
+        std::deque<double> order_book_imbalances;
+        std::deque<double> lob_bid_slopes;
+        std::deque<double> lob_ask_slopes;
 
-        std::deque<std::pair<int8_t, double>> trade_volumes;
+        // Trade volumes fixed time
+        std::deque<uint64_t> trade_times;
+        std::deque<double> trade_volumes;
+        std::deque<int8_t> rolling_trade_directions;
         double buy_volume = 0.0;
         double sell_volume = 0.0;
 
-        int adds_since_last_snapshot = 0;
+
+        // Order volumes fixed time
+        std::deque<uint64_t> order_times;
+        std::deque<double> order_volumes;
+        std::deque<int8_t> rolling_order_directions;
+        double bid_volume = 0.0;
+        double ask_volume = 0.0;
     } rolling_state_;
     
     // Helper methods

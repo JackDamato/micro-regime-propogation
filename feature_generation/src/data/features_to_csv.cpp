@@ -9,6 +9,7 @@
 #include "data_reciever.hpp"
 #include "common_constants.hpp"
 #include "environment.hpp"
+#include "feature_map.hpp"
 
 namespace microregime {
 
@@ -58,26 +59,15 @@ private:
         // Common fields
         csv << "timestamp_ns,instrument,";
         
+        bool first = true;
+        for (const auto& feature : kFeatures) {
+            if (!first) csv << ",";
+            csv << feature.first;
+            first = false;
+        }
+
         // Feature fields
-        csv << "midprice,"
-            << "log_spread,"
-            << "log_return,"
-            << "ewm_volatility,"
-            << "realized_variance,"
-            << "directional_volatility,"
-            << "spread_volatility,"
-            << "ofi,"
-            << "signed_volume_pressure,"
-            << "order_arrival_rate,"
-            << "depth_imbalance,"
-            << "market_depth,"
-            << "lob_slope,"
-            << "price_gap,"
-            << "tick_direction_entropy,"
-            << "reversal_rate,"
-            << "aggressor_bias,"
-            << "shannon_entropy,"
-            << "liquidity_stress\n";
+        csv << "\n";
     }
     
     void writeFeatureSet(std::ofstream& csv, uint64_t timestamp_ns, const FeatureSet& fs) {
@@ -86,27 +76,15 @@ private:
         // Write timestamp and instrument
         csv << timestamp_ns << "," << fs.instrument << ",";
         
+        bool first = true;
+        for (const auto& feature : kFeatures) {
+            if (!first) csv << ",";
+            csv << std::setprecision(15) << std::scientific << fs.*feature.second;
+            first = false;
+        }
+        
         // Write all feature values
-        csv << std::setprecision(15) << std::scientific
-            << fs.midprice << ","
-            << fs.log_spread << ","
-            << fs.log_return << ","
-            << fs.ewm_volatility << ","
-            << fs.realized_variance << ","
-            << fs.directional_volatility << ","
-            << fs.spread_volatility << ","
-            << fs.ofi << ","
-            << fs.signed_volume_pressure << ","
-            << fs.order_arrival_rate << ","
-            << fs.depth_imbalance << ","
-            << fs.market_depth << ","
-            << fs.lob_slope << ","
-            << fs.price_gap << ","
-            << fs.tick_direction_entropy << ","
-            << fs.reversal_rate << ","
-            << fs.aggressor_bias << ","
-            << fs.shannon_entropy << ","
-            << fs.liquidity_stress << "\n";
+        csv << "\n";
     }
 };
 

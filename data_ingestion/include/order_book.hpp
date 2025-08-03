@@ -23,10 +23,6 @@ struct L3Snapshot {
     std::array<PriceLevel, DEPTH_LEVELS> ask{};
 };
 
-struct L3Delta {
-    std::array<int8_t, DEPTH_LEVELS> bid_dir{}; // +1 = added, -1 = removed
-    std::array<int8_t, DEPTH_LEVELS> ask_dir{};
-};
 
 struct Order {
     uint64_t order_id;
@@ -51,7 +47,6 @@ public:
 
     // Query top-of-book and top N levels
     void GetL3Snapshot(L3Snapshot& snapshot) const;
-    void GetDepthChange(L3Delta& delta) const;
 
     // Resets internal state
     void Reset();
@@ -59,6 +54,8 @@ public:
     // Market microstructure metrics
     double GetMidPrice() const;
     double GetSpread() const;
+    double GetOrderBookImbalance() const;
+    std::pair<double, double> GetLOBSlopes() const;
 
 private:
     // Internal helper methods
@@ -71,11 +68,8 @@ private:
     std::unordered_map<uint64_t, OrderRef> order_lookup_;
 
     mutable L3Snapshot last_snapshot_;
-    mutable L3Delta last_delta_;
+    
+    std::array<double, DEPTH_LEVELS> obi_weights;
 
     int sum_level_size(const OrderQueue& queue) const;
-    void build_snapshot(BookSide side, const auto& book, std::array<PriceLevel, DEPTH_LEVELS>& levels) const;
-    void compute_delta(const std::array<PriceLevel, DEPTH_LEVELS>& old_levels,
-                       const std::array<PriceLevel, DEPTH_LEVELS>& new_levels,
-                       std::array<int8_t, DEPTH_LEVELS>& delta) const;
 };

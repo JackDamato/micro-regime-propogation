@@ -27,11 +27,13 @@ private:
     std::deque<FeatureSet> window;
 
     // valid keys:
-    // log_spread, price_impact, log_return, 
-    // ewm_volatility, realized_variance, directional_volatility, spread_volatility, 
-    // ofi, signed_volume_pressure, order_arrival_rate, cancel_rate, 
-    // market_depth, lob_slope, price_gap, 
-    // shannon_entropy, liquidity_stress
+    // mean_log_return, midprice_ema_ratio, midprice_ema_deviation,
+    // realized_variance, realized_variance_recent, realized_variance_bias,
+    // directional_volatility, spread_volatility, vol_of_variance,
+    // ofi, add_rate, trade_rate, trade_size_entropy,
+    // obi, lob_bid_slope_mean, lob_ask_slope_mean,
+    // tick_direction_entropy, reversal_rate, reversal_entropy,
+    // aggressor_ratio, aggressor_bias
 
     std::unordered_map<std::string, double> feature_sums;
     std::unordered_map<std::string, double> feature_sums_2;

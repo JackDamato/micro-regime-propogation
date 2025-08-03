@@ -5,15 +5,14 @@ import os
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from env import PROJECT_ROOT
+import polars as pl
 
-def variance_checks(outfile):
-    df = pd.read_csv("features_with_regimes.csv")
-
-    df = df.drop(columns=DROP_COLUMNS, errors='ignore')
+def variance_checks(outfile, df):
+    df = df.drop(DROP_COLUMNS)
     vars = []
     # do this for all features
     for feature in df.columns:
-        vars.append((feature, np.var(df[feature].values)))
+        vars.append((feature, df[feature].var()))
     
     vars.sort(key=lambda x: x[1], reverse=True)
     with open(outfile, "a") as f:
@@ -23,7 +22,7 @@ def variance_checks(outfile):
             f.write(f"{var[0]},{var[1]}\n")
         f.write("\n============== END ==============\n")
 
-def duration_checks(outfile):
+def duration_checks(outfile, df):
     """
     Computes the mean and median duration of each regime in a time-ordered DataFrame.
 
@@ -35,44 +34,37 @@ def duration_checks(outfile):
     - None
     """
     regime_col = "regime"
-    df = pd.read_csv("features_with_regimes.csv")
     if regime_col not in df.columns:
         raise ValueError(f"Column '{regime_col}' not found in DataFrame.")
 
     # Detect regime changes
-    df = df.copy()
-    df['regime_shift'] = (df[regime_col] != df[regime_col].shift()).cumsum()
+    df = df.clone()
+    # not valid with polars, change this
+    df = df.with_columns(pl.col(regime_col).shift().ne(pl.col(regime_col)).cum_sum().alias("regime_shift"))
 
     # Count duration of each regime period
-    durations = df.groupby(['regime_shift', regime_col]).size().reset_index(name='duration')
+    durations = df.group_by(['regime_shift', regime_col]).agg(pl.col("regime_shift").count().alias("duration"))
 
     # Compute mean and median durations per regime
-    stats = durations.groupby(regime_col)['duration'].agg(['mean', 'median']).reset_index()
-    stats.columns = ['regime', 'mean_duration', 'median_duration']
+    stats = durations.group_by(regime_col).agg([pl.col("duration").mean().alias("mean_duration"), pl.col("duration").median().alias("median_duration")])
 
     with open(outfile, "a") as f:
         f.write("\n=========== DURATION OF REGIMES ===========\n")
         f.write("Regime, Mean Duration, Median Duration\n")
-        for index, row in stats.iterrows():
+        for row in stats.iter_rows(named=True):
             f.write(f"{row['regime']},{row['mean_duration']},{row['median_duration']}\n")
         f.write("\n============== END ==============\n")
 
 
-def calculate_index_scores(outfile):
+def calculate_index_scores(outfile, df):
     # open outfile
     with open(outfile, "a") as f:
-        file_path = "features_with_regimes.csv"
 
-        if not os.path.isfile(file_path):
-            print(f"[WARNING] File not found: {file_path}")
-
-        print(f"[INFO] Processing: {file_path}")
-        df = pd.read_csv(file_path)
-        df.drop(columns=DROP_COLUMNS, errors='ignore', inplace=True)
+        df = df.drop(DROP_COLUMNS)
         if "timestamp_ns" in df.columns:
-            df = df.drop(columns=["timestamp_ns"])
+            df = df.drop("timestamp_ns")
 
-        X = df.drop(columns=["regime"])
+        X = df.drop("regime")
         y = df["regime"]
 
         # Standardize features
@@ -93,14 +85,21 @@ def calculate_index_scores(outfile):
 
 
 
+def main(df):
+    outfile = f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}\\{REGIME_COUNT}\\information.txt"
+    outfile_dir = os.path.dirname(outfile)
+    if not os.path.exists(outfile_dir):
+        os.makedirs(outfile_dir)
+    other_outfile = f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}_information.csv"
+    calculate_index_scores(other_outfile, df)
+    
+    variance_checks(outfile, df)
+    duration_checks(outfile, df)
 
-outfile = f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}\\{REGIME_COUNT}\\information.txt"
-outfile_dir = os.path.dirname(outfile)
-if not os.path.exists(outfile_dir):
-    os.makedirs(outfile_dir)
+    
 
-variance_checks(outfile)
-duration_checks(outfile)
 
-other_outfile = f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}_information.csv"
-calculate_index_scores(other_outfile)
+if __name__ == "__main__":
+    df = pl.read_csv("features_with_regimes.csv")
+    main(df)
+

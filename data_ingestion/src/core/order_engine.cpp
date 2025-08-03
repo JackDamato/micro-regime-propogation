@@ -37,7 +37,8 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
         throw std::runtime_error("Out-of-order event detected");
     }
     
-    if (event.instrument == "ES" && event.instrument_id != 4916) {
+    // ESM5 vs ESU5, rollbacks occur in june so we want to switch the instrument we look at.
+    if (event.instrument == "ES" && ((event.timestamp_ns < 1749787230000000000 && event.instrument_id != 4916) || (event.timestamp_ns >= 1749787230000000000 && event.instrument_id != 14160))) {
         return;
     }
 
@@ -51,7 +52,7 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 BookSide side = (event.side == 'B') ? BookSide::Bid : BookSide::Ask;
                 order_book.ApplyAdd(event.order_id, event.price, event.size, side);
                 track_order(event.order_id, event.instrument, side, event.price);
-                feature_engine->update_events('A');
+                feature_engine->update_add(event.size, side == BookSide::Bid ? 1 : -1, event.timestamp_ns);
                 break;
             }
             case 'M': {  // Modify
@@ -70,7 +71,6 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 
                 // Update the order info with new price
                 track_order(event.order_id, event.instrument, order_info->side, event.price);
-                feature_engine->update_events('M');
                 break;
             }
             case 'C': {  // Cancel
@@ -86,7 +86,6 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 
                 // Remove the order from tracking
                 untrack_order(event.order_id);
-                feature_engine->update_events('C');
                 break;
             }
             case 'R': { // Clear
@@ -98,13 +97,14 @@ void OrderEngine::process_event(const MarketEvent& event, FeatureEngine* feature
                 break;
             }
             case 'T': {  // Trade
-                // Trades typically don't modify the order book directly
+                // Trades don't modify the order book directly
                 // They're recorded but don't change the visible order book
                 if (feature_engine) {
                     double price = event.price;
                     int size = event.size;
                     int8_t direction = event.side == 'B' ? 1 : -1;
-                    feature_engine->update_trade(price, size, direction);
+                    uint64_t timestamp_ns = event.timestamp_ns;
+                    feature_engine->update_trade(price, size, direction, timestamp_ns);
                 }
                 break;
             }

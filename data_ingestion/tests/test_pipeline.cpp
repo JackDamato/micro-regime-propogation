@@ -19,15 +19,15 @@ class MarketDataPipelineTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Path to the test data file
-        test_file_ = fs::path("..") / ".." / "data" / "ES" / "glbx-mdp3-20250506.mbo.dbn.zst";
+        test_file_ = fs::path("..") / ".." / "data" / "ES" / "glbx-mdp3-20250627.mbo.dbn.zst";
         
         // Fallback path if running from build directory
         if (!fs::exists(test_file_)) {
-            test_file_ = fs::path("..") / "data" / "ES" / "glbx-mdp3-20250506.mbo.dbn.zst";
+            test_file_ = fs::path("..") / "data" / "ES" / "glbx-mdp3-20250627.mbo.dbn.zst";
             if (!fs::exists(test_file_)) {
                 GTEST_SKIP() << "Test file not found at either location:"
-                           << "\n  " << fs::absolute("../../data/ES/glbx-mdp3-20250506.mbo.dbn.zst")
-                           << "\n  " << fs::absolute("../data/ES/glbx-mdp3-20250506.mbo.dbn.zst");
+                           << "\n  " << fs::absolute("../../data/ES/glbx-mdp3-20250627.mbo.dbn.zst")
+                           << "\n  " << fs::absolute("../data/ES/glbx-mdp3-20250627.mbo.dbn.zst");
             }
         }
         
@@ -60,9 +60,8 @@ protected:
     
         // Rolling stats
         std::cout << "\nRolling Stats (last " << ROLLING_WINDOW << " events):\n";
-        std::cout << "  Buy Volume: " << snapshot.rolling_buy_volume << "\n";
-        std::cout << "  Sell Volume: " << snapshot.rolling_sell_volume << "\n";
-        std::cout << "  Adds Since Last Snapshot: " << snapshot.adds_since_last_snapshot << "\n";
+        std::cout << "  Buy Volume: " << snapshot.buy_volume << "\n";
+        std::cout << "  Sell Volume: " << snapshot.sell_volume << "\n";
 
 
         // std::cout << "  Rolling Midprices: [";
@@ -80,14 +79,6 @@ protected:
         // std::cout << "  Trade Directions: [";
         // std::copy(snapshot.rolling_trade_directions.begin(), snapshot.rolling_trade_directions.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
         // std::cout << static_cast<int>(snapshot.rolling_trade_directions.back()) << "]\n";
-
-        std::cout << "  Bid Depth Change Directions: [";
-        std::copy(snapshot.bid_depth_change_direction.begin(), snapshot.bid_depth_change_direction.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
-        std::cout << static_cast<int>(snapshot.bid_depth_change_direction.back()) << "]\n";
-
-        std::cout << "  Ask Depth Change Directions: [";
-        std::copy(snapshot.ask_depth_change_direction.begin(), snapshot.ask_depth_change_direction.end() - 1, std::ostream_iterator<int>(std::cout, ", "));
-        std::cout << static_cast<int>(snapshot.ask_depth_change_direction.back()) << "]\n";
     
         // Reserved field
         std::cout << "Reserved: " << snapshot.reserved << "\n";
@@ -116,14 +107,14 @@ TEST_F(MarketDataPipelineTest, FullPipelineTest) {
         if (!processed) break;
         
         event_count++;
-        
+        uint64_t timestamp_ns = parser.current_timestamp();
         // Take periodic snapshots
         if (event_count % snapshot_interval == 0) {
             const auto& order_book = order_engine.get_order_book(instrument_);
             FeatureInputSnapshot snapshot;
             
             // Generate snapshot using FeatureEngine
-            snapshot = feature_engine.generate_snapshot();
+            snapshot = feature_engine.generate_snapshot(timestamp_ns);
             snapshot_count++;
             print_snapshot(snapshot, snapshot_count);
         }

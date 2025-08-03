@@ -45,7 +45,6 @@ void DualFeaturePipeline::run(uint64_t snapshot_interval_ns,
         std::cerr << "Snapshot interval " << snapshot_interval_ns << " is not equal to default " << SNAPSHOT_INTERVAL_NS << std::endl;
     }
 
-    const uint64_t midprice_update_interval_ns = 50'000'000; // 50 ms
     uint64_t last_midprice_update_time = 0;
     
     auto base_opt = parser_base_.get_next_event();
@@ -66,23 +65,21 @@ void DualFeaturePipeline::run(uint64_t snapshot_interval_ns,
 
     while (base_opt && future_opt) {
         uint64_t current_event_time = std::min(base_event.timestamp_ns, future_event.timestamp_ns);
-        // Calculate how many 50ms intervals have passed since last update
+        // Calculate how many ROLLING_UPDATE_INTERVAL_NS intervals have passed since last update
         if (last_midprice_update_time > 0) {
             uint64_t time_since_last_update = current_event_time - last_midprice_update_time;
-            uint64_t intervals_passed = time_since_last_update / midprice_update_interval_ns;
+            uint64_t intervals_passed = time_since_last_update / ROLLING_UPDATE_INTERVAL_NS;
             
             if (intervals_passed > 0) {
                 for (uint64_t i = 1; i <= intervals_passed; ++i) {
-                    uint64_t update_time = last_midprice_update_time + (i * midprice_update_interval_ns);
+                    uint64_t update_time = last_midprice_update_time + (i * ROLLING_UPDATE_INTERVAL_NS);
                     if (update_time > nyseEnd) break;
                     
-                    // Update midprice and spread at each 50ms interval
-                    feature_engine_base_.UpdateMidpriceAndSpread(order_engine_.get_order_book(base_asset_).GetMidPrice(), 
-                                                                order_engine_.get_order_book(base_asset_).GetSpread());
-                    feature_engine_future_.UpdateMidpriceAndSpread(order_engine_.get_order_book(future_).GetMidPrice(), 
-                                                                order_engine_.get_order_book(future_).GetSpread());
+                    // Update midprice and spread at each ROLLING_UPDATE_INTERVAL_NS interval
+                    feature_engine_base_.UpdateRollingStats();
+                    feature_engine_future_.UpdateRollingStats();
                 }
-                last_midprice_update_time += intervals_passed * midprice_update_interval_ns;
+                last_midprice_update_time += intervals_passed * ROLLING_UPDATE_INTERVAL_NS;
             }
         }
 
@@ -104,13 +101,13 @@ void DualFeaturePipeline::run(uint64_t snapshot_interval_ns,
             future_event.timestamp_ns >= next_snapshot_time &&
             next_snapshot_time > nyseStart) {
             // --- BASE asset snapshot ---
-            FeatureInputSnapshot base_snapshot = feature_engine_base_.generate_snapshot();
+            FeatureInputSnapshot base_snapshot = feature_engine_base_.generate_snapshot(next_snapshot_time);
             FeatureSet base_raw = feature_processor_base_.GetRawFeatureSet(base_snapshot);
             auto base_norm = feature_processor_base_.GetProcessedFeatureSet(base_raw);
             base_data_reciever.ingest_feature_set(base_asset_, next_snapshot_time, base_raw, base_norm);
 
             // --- FUTURE asset snapshot ---
-            FeatureInputSnapshot future_snapshot = feature_engine_future_.generate_snapshot();
+            FeatureInputSnapshot future_snapshot = feature_engine_future_.generate_snapshot(next_snapshot_time);
             FeatureSet fut_raw = feature_processor_future_.GetRawFeatureSet(future_snapshot);
             auto fut_norm = feature_processor_future_.GetProcessedFeatureSet(fut_raw);
             future_data_reciever.ingest_feature_set(future_, next_snapshot_time, fut_raw, fut_norm);

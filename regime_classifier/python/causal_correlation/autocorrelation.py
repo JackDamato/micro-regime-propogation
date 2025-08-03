@@ -11,7 +11,7 @@ from env import PROJECT_ROOT
 
 # === Load CSV ===
 def autocorrelation(date):
-    folder_name = "output_Snapshot0.50_Window30000_Events3000"
+    folder_name = "output_Snapshot0.50_Window30000_Events600"
     FILE_PATH = PROJECT_ROOT + "\\data\\" + folder_name + "\\" + date + "\\base_SPY_norm.csv"
     df = pd.read_csv(FILE_PATH)
 
@@ -72,8 +72,9 @@ def autocorrelation(date):
         axes[j].axis("off")
 
     plt.tight_layout()
-    plt.savefig(PROJECT_ROOT + "\\regime_classifier\\python\\autocorrelation.png")
+    plt.savefig(PROJECT_ROOT + "\\regime_classifier\\python\\causal_correlation\\autocorrelation.png")
     plt.show()
+    plt.close()
 
     # === Summary DataFrame ===
     summary_df = pd.DataFrame(summary)
@@ -89,11 +90,12 @@ def autocorrelation(date):
     sns.heatmap(corr, cmap="coolwarm", annot=False, center=0)
     plt.title("Feature Correlation Heatmap")
     plt.tight_layout()
-    plt.savefig(PROJECT_ROOT + "\\regime_classifier\\python\\correlation_heatmap.png")
+    plt.savefig(PROJECT_ROOT + "\\regime_classifier\\python\\causal_correlation\\correlation_heatmap.png")
+    plt.close()
     # plt.show()
 
 
-dates = ["20250430", "20250501", "20250502", "20250505", "20250529"]
+dates = ["20250603"]
 
 for date in dates:
     autocorrelation(date)

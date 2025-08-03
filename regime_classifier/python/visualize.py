@@ -6,5 +6,5 @@ from env import PROJECT_ROOT
 
 outdir = f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}\\{REGIME_COUNT}"
 regime_data_analysis("features_with_regimes.csv", outdir)
-# visualize_umap("features_with_regimes.csv", outdir)
+visualize_umap("features_with_regimes.csv", outdir)
 # visualize_tsne("features_with_regimes.csv", outdir)

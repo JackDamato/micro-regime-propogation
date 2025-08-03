@@ -12,6 +12,7 @@
 #include <feature_snapshot.hpp>
 #include <feature_processor.hpp>
 #include <feature_set.hpp>
+#include <feature_map.hpp>
 
 namespace fs = std::filesystem;
 using namespace microregime;
@@ -22,42 +23,11 @@ void print_feature_set(const FeatureSet& fs, const std::string& title) {
     std::cout << "Timestamp: " << fs.timestamp_ns << " ns\n";
     std::cout << "Symbol: " << fs.instrument << "\n";
     
-    // Price & Spread
-    std::cout << "\n--- Price & Spread ---\n";
-    std::cout << "Log Spread: " << fs.log_spread << "\n";
-    std::cout << "Log Return: " << fs.log_return << "\n";
-    
-    // Volatility
-    std::cout << "\n--- Volatility ---\n";
-    std::cout << "EWM Volatility: " << fs.ewm_volatility << "\n";
-    std::cout << "Realized Variance: " << fs.realized_variance << "\n";
-    std::cout << "Directional Volatility: " << fs.directional_volatility << "\n";
-    std::cout << "Spread Volatility: " << fs.spread_volatility << "\n";
-    
-    // Order Flow
-    std::cout << "\n--- Order Flow ---\n";
-    std::cout << "OFI: " << fs.ofi << "\n";
-    std::cout << "Signed Volume Pressure: " << fs.signed_volume_pressure << "\n";
-    std::cout << "Order Arrival Rate: " << fs.order_arrival_rate << "\n";
-    
-    // Liquidity
-    std::cout << "\n--- Liquidity ---\n";
-    std::cout << "Depth Imbalance: " << fs.depth_imbalance << "\n";
-    std::cout << "Market Depth: " << fs.market_depth << "\n";
-    std::cout << "LOB Slope: " << fs.lob_slope << "\n";
-    std::cout << "Price Gap: " << fs.price_gap << "\n";
-    
-    // Microstructure Transitions
-    std::cout << "\n--- Microstructure Transitions ---\n";
-    std::cout << "Tick Direction Entropy: " << fs.tick_direction_entropy << "\n";
-    std::cout << "Reversal Rate: " << fs.reversal_rate << "\n";
-    std::cout << "Aggressor Bias: " << fs.aggressor_bias << "\n";
-    
-    // Engineered Features
-    std::cout << "\n--- Engineered Features ---\n";
-    std::cout << "Shannon Entropy: " << fs.shannon_entropy << "\n";
-    std::cout << "Liquidity Stress: " << fs.liquidity_stress << "\n";
+    for (const auto& feature : kFeatures) {
+        std::cout << feature.first << ": " << fs.*feature.second << "\n";
+    }
 }
+
 
 class FeatureProcessorTest : public ::testing::Test {
 protected:
@@ -95,18 +65,36 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
     // 3. Process events and collect snapshots
     const size_t max_events = 100000000;      // Process first N events
     const size_t snapshot_interval = 1000000000000; // Take snapshot every 1s
+    const uint64_t ROLLING_UPDATE_INTERVAL_NS = 100000000; // 100ms update interval
     size_t event_count = 0;
     size_t snapshot_count = 0;
     
     std::cout << "Starting feature processor test...\n";
     int64_t prev_timestamp = 0;
+    int64_t last_rolling_update_time = 0;
+    
     while (parser.has_more_events() && event_count < max_events) {
-        
         // Process next event
         bool processed = parser.process_next(order_engine, &feature_engine);
         if (!processed) break;
         
         event_count++;
+        
+        // Update rolling stats at regular intervals
+        if (last_rolling_update_time > 0) {
+            uint64_t current_time = feature_engine.most_recent_timestamp_ns;
+            uint64_t time_since_last_update = current_time - last_rolling_update_time;
+            uint64_t intervals_passed = time_since_last_update / ROLLING_UPDATE_INTERVAL_NS;
+            
+            if (intervals_passed > 0) {
+                for (uint64_t i = 1; i <= intervals_passed; ++i) {
+                    feature_engine.UpdateRollingStats();
+                }
+                last_rolling_update_time += intervals_passed * ROLLING_UPDATE_INTERVAL_NS;
+            }
+        } else {
+            last_rolling_update_time = feature_engine.most_recent_timestamp_ns;
+        }
         
         // Take periodic snapshots
         if (event_count == 0) {
@@ -114,8 +102,9 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
         }
         else if (feature_engine.most_recent_timestamp_ns - prev_timestamp >= snapshot_interval) {
             prev_timestamp = feature_engine.most_recent_timestamp_ns;
+            
             // Generate snapshot using FeatureEngine
-            auto snapshot = feature_engine.generate_snapshot();
+            auto snapshot = feature_engine.generate_snapshot(parser.current_timestamp());
             snapshot_count++;
             
             // Get raw features first
@@ -125,7 +114,6 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
             
             // Then get normalized features
             auto normalized_features = feature_processor.GetProcessedFeatureSet(raw_features);
-
             
             // Print the feature sets
             std::cout << "\n\n===========================================\n";
@@ -137,7 +125,22 @@ TEST_F(FeatureProcessorTest, ProcessSnapshots) {
             
             // Basic validation
             EXPECT_NE(raw_features.timestamp_ns, 0) << "Timestamp should be set";
-            EXPECT_GT(raw_features.market_depth, 0) << "Market depth should be positive";
+            
+            // Debug output for snapshot data
+            std::cout << "\nDebug - Snapshot data:\n";
+            std::cout << "- rolling_midprices: " << (snapshot.rolling_midprices ? "valid" : "null") 
+                      << ", size: " << (snapshot.rolling_midprices ? std::to_string(snapshot.rolling_midprices->size()) : "0") 
+                      << std::endl;
+            
+            if (snapshot.rolling_midprices && !snapshot.rolling_midprices->empty()) {
+                std::cout << "- Last midprice: " << std::scientific << snapshot.rolling_midprices->back() << std::fixed << std::endl;
+                if (snapshot.rolling_midprices->back() <= 0) {
+                    std::cout << "WARNING: Invalid midprice detected!" << std::endl;
+                }
+                EXPECT_GT(snapshot.rolling_midprices->back(), 0) << "Midprice should be positive";
+            } else {
+                std::cout << "WARNING: No midprice data available!" << std::endl;
+            }
         }
     }
     

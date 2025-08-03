@@ -13,34 +13,36 @@ struct FeatureSet {
 
     // --- Price & Spread
     double midprice;
-    double log_spread;
-    double log_return;
+    double mean_log_return;
+    double midprice_ema_ratio;
+    double midprice_ema_deviation;
+    double spread_mean;
 
     // --- Volatility
-    double ewm_volatility;
     double realized_variance;
+    double realized_variance_recent;
+    double realized_variance_bias;
     double directional_volatility;
     double spread_volatility;
+    double vol_of_variance;
 
     // --- Order Flow
     double ofi;
-    double signed_volume_pressure;
-    double order_arrival_rate;
+    double add_rate;
+    double trade_rate;
+    double trade_size_entropy;
 
     // --- Liquidity
-    double depth_imbalance;
-    double market_depth;
-    double lob_slope;
-    double price_gap;
+    double obi;
+    double lob_bid_slope_mean;
+    double lob_ask_slope_mean;
 
     // --- Microstructure Transitions
     double tick_direction_entropy;
     double reversal_rate;
+    double reversal_entropy;
+    double aggressor_ratio;
     double aggressor_bias;
-
-    // --- Engineered
-    double shannon_entropy;
-    double liquidity_stress;
 };
 
 } // namespace microregime

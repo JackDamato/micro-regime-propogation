@@ -34,11 +34,13 @@ TEST_F(DbnReaderBenchmark, TestDbnParseSpeed) {
     size_t event_count = 0;
     
     auto start = high_resolution_clock::now();
-
+    std::map<uint32_t, int> instruments;
     DbnMboReader reader(test_file_.string(), "ES");
     while (reader.has_next() && event_count < max_events) {
         auto event = reader.next_event();
         // Prevent compiler from optimizing out the read
+        
+        instruments[event.instrument_id]++;
         (void)event; // Mark as used
         event_count++;
     }
@@ -51,4 +53,9 @@ TEST_F(DbnReaderBenchmark, TestDbnParseSpeed) {
     
     std::cout << "Processed " << event_count << " events in " 
               << duration << "ms (" << events_per_second << " events/s)" << std::endl;
+    std::cout << "Number of unique instruments: " << instruments.size() << std::endl;
+    std::cout << "Unique IDs: " << std::endl;
+    for (auto instrument : instruments) {
+        std::cout << instrument.first << ": " << instrument.second << std::endl;
+    }
 }

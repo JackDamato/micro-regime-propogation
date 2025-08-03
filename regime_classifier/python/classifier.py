@@ -5,6 +5,8 @@ from hmmlearn import vhmm
 from constants import FOLDER_NAME, ASSET, REGIME_COUNT, PCA, PCA_VAR, DROP_COLUMNS, DATES
 import os
 from env import PROJECT_ROOT
+import polars as pl
+from data_checks import main
 
 # ==============================================================
 # ============= Loading Data from Multiple Dates ===============
@@ -13,14 +15,12 @@ from env import PROJECT_ROOT
 dfs = []
 lengths = []
 for date in DATES:
-    df = pd.read_csv("{}\\data\\{}\\{}\\{}_norm.csv".format(PROJECT_ROOT, FOLDER_NAME, date, ASSET))
+    df = pl.read_csv("{}\\data\\{}\\{}\\{}_norm.csv".format(PROJECT_ROOT, FOLDER_NAME, date, ASSET))
     dfs.append(df)
     lengths.append(len(df))
 
-df = pd.concat(dfs)
-
-# Optional: rename columns to distinguish
-features = df.drop(columns=DROP_COLUMNS, errors='ignore')
+df = pl.concat(dfs)
+features = df.drop(DROP_COLUMNS)
 print(str("timestamp_ns" in features.columns))
 # Convert to NumPy array
 X_array = features.to_numpy()
@@ -49,11 +49,11 @@ if PCA:
 # ============= Run, fit, and predict HMM ======================    
 # ==============================================================
 np.random.seed(45)
-
+print(" Training ")
 model = hmm.GaussianHMM(
     n_components=REGIME_COUNT,
     covariance_type="full",
-    n_iter=500,
+    n_iter=80,
     init_params="",  # skip 'm' to avoid random mean init
     params="stmc"
 )
@@ -61,7 +61,7 @@ model = hmm.GaussianHMM(
 model.fit(X_array, lengths)
 states = model.predict(X_array, lengths)
 
-
+print(" Trained ")
 # ==============================================================
 # ============= Output Model Information/scores ================
 # ==============================================================
@@ -86,9 +86,9 @@ with open(outfile, "a") as f:
 # ============= Add regimes to DataFrame and save ==============
 # ============= data, model, and model config     ==============
 # ==============================================================
-df["regime"] = states
+df = df.with_columns(pl.Series("regime", states))
 # save features with regimes
-df.to_csv(f"{PROJECT_ROOT}\\regime_classifier\\python\\features_with_regimes.csv", index=False)
+df.write_csv(f"{PROJECT_ROOT}\\regime_classifier\\python\\features_with_regimes.csv")
 
 # make a directory for the model
 model_dir = f"{PROJECT_ROOT}\\regime_classifier\\python\\run_outputs\\{FOLDER_NAME}\\{ASSET}\\{REGIME_COUNT}"
@@ -110,3 +110,6 @@ with open(outfile, "w") as f:
     f.write(str(model.transmat_))
     f.write("\nstartprob:\n")
     f.write(str(model.startprob_))
+
+
+main(df)

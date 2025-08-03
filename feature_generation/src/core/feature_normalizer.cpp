@@ -1,33 +1,12 @@
 #include "feature_normalizer.hpp"
 #include "common_constants.hpp"
 #include "feature_set.hpp"
+#include "feature_map.hpp"
 #include <numeric>
 #include <iostream>
 #include <ctime>
 
 namespace microregime {
-
-const std::vector<std::pair<std::string, double FeatureSet::*>> kFeatures = {
-    {"midprice", &FeatureSet::midprice},
-    {"log_spread", &FeatureSet::log_spread},
-    {"log_return", &FeatureSet::log_return},
-    {"ewm_volatility", &FeatureSet::ewm_volatility},
-    {"realized_variance", &FeatureSet::realized_variance},
-    {"directional_volatility", &FeatureSet::directional_volatility},
-    {"spread_volatility", &FeatureSet::spread_volatility},
-    {"ofi", &FeatureSet::ofi},
-    {"signed_volume_pressure", &FeatureSet::signed_volume_pressure},
-    {"order_arrival_rate", &FeatureSet::order_arrival_rate},
-    {"tick_direction_entropy", &FeatureSet::tick_direction_entropy},
-    {"depth_imbalance", &FeatureSet::depth_imbalance},
-    {"market_depth", &FeatureSet::market_depth},
-    {"lob_slope", &FeatureSet::lob_slope},
-    {"price_gap", &FeatureSet::price_gap},
-    {"shannon_entropy", &FeatureSet::shannon_entropy},
-    {"liquidity_stress", &FeatureSet::liquidity_stress},
-    {"reversal_rate", &FeatureSet::reversal_rate},
-    {"aggressor_bias", &FeatureSet::aggressor_bias}
-};
 
 void FeatureNormalizer::AddFeatureSet(const FeatureSet& feature_set) {
     auto update_sums = [&](const FeatureSet& fs, 

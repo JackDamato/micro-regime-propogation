@@ -9,20 +9,17 @@
 #include <dual_feature_pipeline.hpp>
 #include <feature_set.hpp>
 #include <data_reciever.hpp>
+#include <feature_map.hpp>
 
 using namespace microregime;
 namespace fs = std::filesystem;
 
 // --- Helper to pretty-print FeatureSet ---
 void print_features(const FeatureSet& fs, const std::string& label) {
-    std::cout << "\n=== " << label << " ===\n"
-              << "Timestamp: " << fs.timestamp_ns << "\n"
-              << "Symbol:    " << fs.instrument << "\n"
-              << "Log Spread: " << fs.log_spread << "\n"
-              << "Order Flow Imbalance: " << fs.ofi << "\n"
-              << "Market Depth: " << fs.market_depth << "\n"
-              << "Liquidity Stress: " << fs.liquidity_stress << "\n"
-              << "Tick Direction Entropy: " << fs.tick_direction_entropy << "\n";
+    std::cout << "\n=== " << label << " ===\n";
+    for (const auto& feature : kFeatures) {
+        std::cout << feature.first << ": " << fs.*feature.second << "\n";
+    }
 }
 
 // --- Custom DataReceiver for testing ---

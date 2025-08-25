@@ -9,7 +9,6 @@ namespace microregime {
 
 const std::vector<std::pair<std::string, double FeatureSet::*>> kFeatures = {
     {"midprice", &FeatureSet::midprice},
-    {"spread_mean", &FeatureSet::spread_mean},
     {"mean_log_return", &FeatureSet::mean_log_return},
     {"midprice_ema_ratio", &FeatureSet::midprice_ema_ratio},
     {"midprice_ema_deviation", &FeatureSet::midprice_ema_deviation},
@@ -17,15 +16,11 @@ const std::vector<std::pair<std::string, double FeatureSet::*>> kFeatures = {
     {"realized_variance_recent", &FeatureSet::realized_variance_recent},
     {"realized_variance_bias", &FeatureSet::realized_variance_bias},
     {"directional_volatility", &FeatureSet::directional_volatility},
-    {"spread_volatility", &FeatureSet::spread_volatility},
     {"vol_of_variance", &FeatureSet::vol_of_variance},
     {"ofi", &FeatureSet::ofi},
     {"add_rate", &FeatureSet::add_rate},
     {"trade_rate", &FeatureSet::trade_rate},
     {"trade_size_entropy", &FeatureSet::trade_size_entropy},
-    {"obi", &FeatureSet::obi},
-    {"lob_bid_slope_mean", &FeatureSet::lob_bid_slope_mean},
-    {"lob_ask_slope_mean", &FeatureSet::lob_ask_slope_mean},
     {"tick_direction_entropy", &FeatureSet::tick_direction_entropy},
     {"reversal_rate", &FeatureSet::reversal_rate},
     {"reversal_entropy", &FeatureSet::reversal_entropy},

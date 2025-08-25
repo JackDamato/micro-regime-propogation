@@ -48,12 +48,10 @@ private:
     struct RollingState {
         std::deque<double> midprices; // Take the last 5 minutes of midprices 0.05 seconds between each update.
         std::deque<double> spreads; // Take the last 5 minutes of spreads 0.05 seconds between each update.
+        std::deque<double> returns;
         
         std::deque<int8_t> tick_directions;
         std::deque<char> recent_event_types;
-        std::deque<double> order_book_imbalances;
-        std::deque<double> lob_bid_slopes;
-        std::deque<double> lob_ask_slopes;
 
         // Trade volumes fixed time
         std::deque<uint64_t> trade_times;

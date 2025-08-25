@@ -36,15 +36,12 @@ struct FeatureInputSnapshot {
 
     // Rolling windows.
     const std::deque<double>* rolling_midprices; // Used for hella things                       COMPUTED GOOD
-    const std::deque<double>* rolling_spreads;   // Used for spread volatility, spread mean     COMPUTED GOOD
+    const std::deque<double>* rolling_spreads; // ignoring for now.
+    const std::deque<double>* rolling_log_returns; // also used for hella things.
     const std::deque<int8_t>* rolling_tick_directions; // +1, 0, -1 used for tick direction entropy, COMPUTED GOOD
 
     const std::deque<int8_t>* rolling_trade_directions; // used for reversal rate, reversal entropy   COMPUTED GOOD
     const std::deque<double>* rolling_trade_sizes; // Used for trade size entropy                COMPUTED GOOD
-
-    const std::deque<double>* rolling_lob_bid_slopes; // Used for LOB slope means               COMPUTED GOOD
-    const std::deque<double>* rolling_lob_ask_slopes; // Used for LOB slope means               COMPUTED GOOD
-    const std::deque<double>* rolling_order_book_imbalances; // Used for OBI mean               COMPUTED GOOD
 
     // --- Optional Padding / Alignment ---
     uint32_t reserved = 0;

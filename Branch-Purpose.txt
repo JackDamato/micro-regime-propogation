@@ -1,0 +1,116 @@
+We want to examine new features/better features
+
+To properly capture market regimes we need to capture volatility/variance, trends, and second order metrics, as well as order flow, and liquidity.
+
+Features that are good for this:
+VARIANCE FEATURES
+- Realized Variance of rolling midprices at fixed time intervals for a fixed time window
+- Volatility of Volatility, Calculated With the feature processor from incoming snapshots. Needs boot up time.
+- Spread Volatility, STDEV of spread over the same setup as midprices
+- Directional Volatility, Separate vol for positive/negative returns. IE have + dir and - dir vol
+
+---
+Data needed for these ^^^ . For Realized Variance we need **Rolling Midprices** (these will be updated fixed interval for feature input snapshots)
+    For vol of vol we need to store the last 30-60 seconds of Realized Variance data points. (if 0.5 second snapshot, then 60-120 data points)
+    For spread Volitlity we need **Rolling Spreads** (these will be updated fixed interval for feature input snapshots)
+    For Directional Volatility we need **Rolling Midprices** (these will be updated fixed interval for feature input snapshots)
+    
+    in summary, we need rolling_midprices, rolling_spreads, and store our realized_vars in a rolling queue
+---
+
+DIRECTIONAL FEATURES
+- Mean Log Return
+- Order Flow Imbalance --> Needs to use sizes of orders, not just numbers
+    - Need a struct, Bid Volumes and Ask Volumes as well as Bid TS and Ask TS
+- Aggressor Bias/Ratio
+- EMA of midprice over whole window versus over half window (ratio, norm diff, etc)
+- Midprice Deviation from EMA
+- Reversal Rate (already implemented)
+
+---
+for mean log return we can use the rolling midprices and update this at the same time as realized variance
+for Order Flow Imbalance we need to store our bid volumes and ask volumes in a rolling queue, as well as the timestamps corresponding to each order
+    - on process add we need to add the volumes to the rolling_queues and the timestamps to the rolling timestamps.
+    - we will also store the current sum for both sides. When we want to get snapshot, we will evict the timestamps/volumes outside the current timestamp.
+for Aggressor Ratio we have to store out trade volumes in a rolling queue, as well as timestamps corresponding to each trade
+    - on process trade we need to add the amounts to the rolling queues and timestamps to the rolling timestamps.
+    - we will also store the current sum for both sides. When we want to get snapshot, we will evict the timestamps/volumes outside the current timestamp.
+For EMA of price we can use the rolling midprices and update this at the same time as realized variance
+for Midprice Deviation from EMA we can use the rolling midprices and update this at the same time as realized variance
+
+    in summary, we need rolling_midprices, a OrderFlowTracker object and an TradeFlowTracker object
+---
+
+LIQUIDITY FEATURES
+- LOB Slope Mean over whole window (new rolling stat)
+    - BID AND ASK SIDE
+- Bid-Ask Spread Mean over window
+
+---
+- We need LOB Slope Mean on every single MidPrice update we should calculate LOB Slope as well and add it to a small rolling queue of 3 seconds, update a rolling sum and count.
+    - Return this sum when we go to get the mean.
+- Bid-Ask Spread is already stored in a window, we can send the sum of that window when we go to get that snapshot.
+---
+
+
+ORDER FLOW and BOOK FEATURES
+- Order Book Imbalance Mean over window --> need Sum Bids, Sum Asks over window (arrays)
+- Shannon Entropy of Midprice Movements (use midprices)
+- Add Rate (adds in last 2 minute divided by 120 (adds/second))
+- Cancel Rate (cancels in last 2 minute divided by 120 (cancels/second))
+
+---
+- Order Book Imbalance Mean over window --> need Sum Bids, Sum Asks over window (arrays)
+    - We need to store our bid volumes and ask volumes in a rolling queue, as well as the timestamps corresponding to each order
+    - on process add we need to add the volumes to the rolling_queues and the timestamps to the rolling timestamps.
+    - we will also store the current sum for both sides. When we want to get snapshot, we will evict the timestamps/volumes outside the current timestamp.
+- Shannon Entropy of Trade Signs (last X trades)
+    - We need to store our trade volumes in a rolling queue, as well as timestamps corresponding to each trade
+    - on process trade we need to add the amounts to the rolling queues and timestamps to the rolling timestamps.
+    - we will also store the current sum for both sides. When we want to get snapshot, we will evict the timestamps/volumes outside the current timestamp.
+- Add Rate (adds in last 2 minute divided by 120 (adds/second))
+- Cancel Rate (cancels in last 2 minute divided by 120 (cancels/second))
+
+    in summary, we need rolling_midprices, a OrderFlowTracker object and an TradeFlowTracker object
+
+
+
+List of features:
+- Realized Variance                             (already implemented)
+- Realized Variance (Half Window)               (already implemented)
+- Realized Variance Bias                        (already implemented)
+- Volatility of Volatility                      (already implemented)
+- Spread Volatility                             (already implemented)
+- Directional Volatility                        (already implemented)
+- Bid-Ask Spread Mean                           (already implemented)
+
+- Mean Log Return                               (already implemented)
+- EMA of Midprice 5min/1min                     (already implemented)
+- Midprice Deviation from EMA                   (already implemented)
+
+- Order Flow Imbalance                          (already implemented)
+- Add Rate                                      (already implemented)
+- Trade Rate                                    (already implemented)
+- Trade Size Entropy                            (already implemented)
+
+- Order Book Imbalance Mean                     (already implemented)
+- LOB Slope Mean Bid Side                       (already implemented)
+- LOB Slope Mean Ask Side                       (already implemented)
+
+- Aggressor Bias                                (already implemented)
+- Aggressor Ratio                               (already implemented)
+- Reversal Rate                                 (already implemented)
+- Shannon Entropy of Midprice Movements         (already implemented)
+   
+
+double deque of LOB slopes --> Calculated by feature engine every X seconds
+trade_sizes deque of last y trades
+
+
+----------
+We've successfully changed our system to have rolling windows on our features captured at FIXED time intervals rather than every event, which 
+should help with noise. Additionally, we added and changed many features to store better information, and will be working on smoothing/sharpening/changing these.
+And we've recieved some better results in terms of sihoulette for volatility clustering (~0.15-0.20 with 2-3 regimes)
+But we need to work deeply on the features we use to capture information as accurately as possible while minimizing noise. I think experimenting with larger
+time scales will be better, but we will see.
+-----------

@@ -14,11 +14,11 @@ public:
     FeatureSet GetRawFeatureSet(const FeatureInputSnapshot& snapshot);
     FeatureSet GetProcessedFeatureSet(const FeatureSet& raw_feature_set);
 private:
-    void ProcessPriceAndSpread(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
-    void ProcessVolatility(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
-    void ProcessOrderFlow(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
-    void ProcessLiquidity(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
-    void ProcessMicrostructureTransitions(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
+    void ProcessPriceFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
+    void ProcessVolatilityFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
+    void ProcessOrderFlowFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
+    void ProcessRandomnessFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
+    void ProcessEngineeredFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set);
 
     struct Cache {
         // Rolling volatility of volatility

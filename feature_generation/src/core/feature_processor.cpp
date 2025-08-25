@@ -15,12 +15,12 @@ FeatureSet FeatureProcessor::GetRawFeatureSet(const FeatureInputSnapshot& snapsh
     feature_set.timestamp_ns = snapshot.timestamp_ns;
     feature_set.instrument = snapshot.instrument;
     feature_set.midprice = snapshot.midprice;
-    ProcessPriceAndSpread(snapshot, feature_set);
-    ProcessVolatility(snapshot, feature_set);
-    ProcessOrderFlow(snapshot, feature_set);
-    ProcessLiquidity(snapshot, feature_set);
-    ProcessMicrostructureTransitions(snapshot, feature_set);
-    
+    ProcessPriceFeatures(snapshot, feature_set);
+    ProcessVolatilityFeatures(snapshot, feature_set);
+    ProcessOrderFlowFeatures(snapshot, feature_set);
+    ProcessRandomnessFeatures(snapshot, feature_set);
+    ProcessEngineeredFeatures(snapshot, feature_set);
+
     feature_normalizer_.AddFeatureSet(feature_set);
     
     return feature_set;
@@ -30,67 +30,91 @@ FeatureSet FeatureProcessor::GetProcessedFeatureSet(const FeatureSet& raw_featur
     return feature_normalizer_.NormalizeFeatureSet(raw_feature_set);
 }
 
-// Mean Log Return, EMA of Midprice full window/half window, Midprice Deviation from EMA full: CACHE OBJECTS
-void FeatureProcessor::ProcessPriceAndSpread(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
+// Midprice, ema_midprices, ema_log_returns (5 windows each)
+void FeatureProcessor::ProcessPriceFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
     // Initialize with default values
-    feature_set.mean_log_return = 0.0;
-    feature_set.midprice_ema_ratio = 0.0;
-    feature_set.midprice_ema_deviation = 0.0;
+    feature_set.ema_midprice_long_long = 0.0;
+    feature_set.ema_midprice_long = 0.0;
+    feature_set.ema_midprice_medium = 0.0;
+    feature_set.ema_midprice_short = 0.0;
+    feature_set.ema_midprice_short_short = 0.0;
+    feature_set.ema_log_return_long_long = 0.0;
+    feature_set.ema_log_return_long = 0.0;
+    feature_set.ema_log_return_medium = 0.0;
+    feature_set.ema_log_return_short = 0.0;
+    feature_set.ema_log_return_short_short = 0.0;
     
     // Check if we have enough data
-    if (!snapshot.rolling_midprices || snapshot.rolling_midprices->size() < 2) {
+    if (!snapshot.rolling_midprices || snapshot.rolling_midprices->size() < 2 || 
+        !snapshot.rolling_log_returns || snapshot.rolling_log_returns->size() < 2) {
         return;
     }
     
     const auto& midprices = *snapshot.rolling_midprices;
-    double mean_log_return = 0.0;
-    double ema_full = (cache_.prev_ema_full == 0.0) ? midprices[0] : cache_.prev_ema_full;
-    double ema_half = (cache_.prev_ema_half == 0.0) ? midprices[0] : cache_.prev_ema_half;
+    const auto& log_returns = *snapshot.rolling_log_returns;
     
     // Ensure we don't divide by zero
     if (midprices.size() <= 3) return;
         
-    double EMA_FULL_ALPHA = 1.0 / (midprices.size() - 1);
-    double EMA_HALF_ALPHA = 1.0 / (midprices.size() / 2 - 1);
+    double EMA_LONG_LONG_ALPHA = 2.0 / (LONG_LONG + 1);
+    double EMA_LONG_ALPHA = 2.0 / (LONG + 1);
+    double EMA_MEDIUM_ALPHA = 2.0 / (MEDIUM + 1);
+    double EMA_SHORT_ALPHA = 2.0 / (SHORT + 1);
+    double EMA_SHORT_SHORT_ALPHA = 2.0 / (SHORT_SHORT + 1);
     for (size_t i = 1; i < midprices.size(); ++i) {
-        ema_full = (1 - EMA_FULL_ALPHA) * ema_full + EMA_FULL_ALPHA * midprices[i];
-        ema_half = (1 - EMA_HALF_ALPHA) * ema_half + EMA_HALF_ALPHA * midprices[i];
-
-        if (midprices[i - 1] == 0.0 || midprices[i] == 0.0) continue;
-        double ret = std::log(midprices[i]) - std::log(midprices[i - 1]);
-        mean_log_return += ret;
+        feature_set.ema_midprice_long_long = (1 - EMA_LONG_LONG_ALPHA) * feature_set.ema_midprice_long_long + EMA_LONG_LONG_ALPHA * midprices[i];
+        feature_set.ema_midprice_long = (1 - EMA_LONG_ALPHA) * feature_set.ema_midprice_long + EMA_LONG_ALPHA * midprices[i];
+        feature_set.ema_midprice_medium = (1 - EMA_MEDIUM_ALPHA) * feature_set.ema_midprice_medium + EMA_MEDIUM_ALPHA * midprices[i];
+        feature_set.ema_midprice_short = (1 - EMA_SHORT_ALPHA) * feature_set.ema_midprice_short + EMA_SHORT_ALPHA * midprices[i];
+        feature_set.ema_midprice_short_short = (1 - EMA_SHORT_SHORT_ALPHA) * feature_set.ema_midprice_short_short + EMA_SHORT_SHORT_ALPHA * midprices[i];
     }
-    feature_set.mean_log_return = (midprices.size() > 2) ? mean_log_return / midprices.size() : 0.0;
-    feature_set.midprice_ema_ratio = (ema_full > 0.0) ? ema_half / ema_full : 0.0;
-    feature_set.midprice_ema_deviation = (ema_full > 0.0) ? (midprices.back() - ema_full) / ema_full : 0.0;
-    cache_.prev_ema_full = ema_full;
-    cache_.prev_ema_half = ema_half;
+
+    for (size_t i = 1; i < log_returns.size(); ++i) {
+        feature_set.ema_log_return_long_long = (1 - EMA_LONG_LONG_ALPHA) * feature_set.ema_log_return_long_long + EMA_LONG_LONG_ALPHA * log_returns[i];
+        feature_set.ema_log_return_long = (1 - EMA_LONG_ALPHA) * feature_set.ema_log_return_long + EMA_LONG_ALPHA * log_returns[i];
+        feature_set.ema_log_return_medium = (1 - EMA_MEDIUM_ALPHA) * feature_set.ema_log_return_medium + EMA_MEDIUM_ALPHA * log_returns[i];
+        feature_set.ema_log_return_short = (1 - EMA_SHORT_ALPHA) * feature_set.ema_log_return_short + EMA_SHORT_ALPHA * log_returns[i];
+        feature_set.ema_log_return_short_short = (1 - EMA_SHORT_SHORT_ALPHA) * feature_set.ema_log_return_short_short + EMA_SHORT_SHORT_ALPHA * log_returns[i];
+    }
 }
 
 
-
-// Realized Variance (full and half window) and Bias, Volatility of Variance, Directional Volatility, Spread Volatility, Spread Mean: CACHE OBJECTS
-void FeatureProcessor::ProcessVolatility(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
+// Realized Variance, Volatility of Variance, Up Volatility, Down Volatility
+void FeatureProcessor::ProcessVolatilityFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
     // Initialize with default values
-    feature_set.realized_variance = 0.0;
-    feature_set.realized_variance_recent = 0.0;
-    feature_set.realized_variance_bias = 0.0;
-    feature_set.directional_volatility = 0.0;
-    feature_set.vol_of_variance = 0.0;
-    feature_set.spread_mean = 0.0;
-    feature_set.spread_volatility = 0.0;
+    feature_set.realized_variance_long_long = 0.0;
+    feature_set.realized_variance_long = 0.0;
+    feature_set.realized_variance_medium = 0.0;
+    feature_set.realized_variance_short = 0.0;
+    feature_set.realized_variance_short_short = 0.0;
+    feature_set.vol_of_variance_short_one = 0.0;
+    feature_set.vol_of_variance_short_two = 0.0;
+    feature_set.vol_of_variance_short_five = 0.0;
+    feature_set.vol_of_variance_long_one = 0.0;
+    feature_set.vol_of_variance_long_two = 0.0;
+    feature_set.vol_of_variance_long_five = 0.0;
+    feature_set.up_volatility_long_long = 0.0;
+    feature_set.up_volatility_long = 0.0;
+    feature_set.up_volatility_medium = 0.0;
+    feature_set.up_volatility_short = 0.0;
+    feature_set.up_volatility_short_short = 0.0;
+    feature_set.down_volatility_long_long = 0.0;
+    feature_set.down_volatility_long = 0.0;
+    feature_set.down_volatility_medium = 0.0;
+    feature_set.down_volatility_short = 0.0;
+    feature_set.down_volatility_short_short = 0.0;
     
     // Check if we have enough data
     if (!snapshot.rolling_midprices || snapshot.rolling_midprices->empty() || 
-        !snapshot.rolling_spreads || snapshot.rolling_spreads->empty()) {
+        !snapshot.rolling_log_returns || snapshot.rolling_log_returns->empty()) {
         return;
     }
     
     const auto& midprices = *snapshot.rolling_midprices;
-    const auto& spreads = *snapshot.rolling_spreads;
-    
+    const auto& log_returns = *snapshot.rolling_log_returns;
+
     // Ensure midprices and spreads have the same size and at least 2 elements
-    if (midprices.size() < 2 || midprices.size() != spreads.size()) {
+    if (midprices.size() < 2 || midprices.size() != log_returns.size()) {
         return;
     }
 
@@ -122,9 +146,7 @@ void FeatureProcessor::ProcessVolatility(const FeatureInputSnapshot& snapshot, F
         }
     }
     feature_set.realized_variance = (count > 0) ? realized_variance / count : 0.0;
-    feature_set.realized_variance_recent = (half_window > 0) ? realized_variance_half / half_window : 0.0;
-    feature_set.realized_variance_bias = (realized_variance > 0.0 && realized_variance_half > 0.0) ? 
-                                        (realized_variance - realized_variance_half) / (realized_variance + realized_variance_half) : 0.0;
+
     
     double avg_up_var = (up_count > 0) ? up_var / up_count : 0.0;
     double avg_down_var = (down_count > 0) ? down_var / down_count : 0.0;
@@ -174,8 +196,8 @@ void FeatureProcessor::ProcessVolatility(const FeatureInputSnapshot& snapshot, F
     feature_set.spread_volatility = std::sqrt(spread_var);
 }
 
-// Order Flow Imbalance, Add Rate, Trade Size Entropy: USES CACHE OBJECTS
-void FeatureProcessor::ProcessOrderFlow(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
+// Order Flow Imbalance, Add Rate, Trade Rate, Aggressor Ratio (long, medium, short.)
+void FeatureProcessor::ProcessOrderFlowFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
     // --- Order Flow Imbalance (OFI) ---
     feature_set.ofi = (snapshot.bid_volume > 0.0 && snapshot.ask_volume > 0.0) ? 
             (snapshot.bid_volume - snapshot.ask_volume) / (snapshot.bid_volume + snapshot.ask_volume) : 0.0;
@@ -187,96 +209,33 @@ void FeatureProcessor::ProcessOrderFlow(const FeatureInputSnapshot& snapshot, Fe
     // --- Trade Rate ---
     feature_set.trade_rate = (snapshot.trade_time_ns > 0.0) ? 
             1'000'000'000 * (snapshot.buy_volume + snapshot.sell_volume) / snapshot.trade_time_ns : 0.0;
-    
-    // --- Trade Size Entropy ---
-    constexpr int NUM_BINS = 10;
-    double trade_size_entropy = 0.0;
 
-    if (snapshot.rolling_trade_sizes && !snapshot.rolling_trade_sizes->empty()) {
-        const auto& sizes = *snapshot.rolling_trade_sizes;
+    // --- Aggressor Ratio ---
+    double aggressor_ratio = (snapshot.buy_volume + snapshot.sell_volume > 0.0) ? 
+            snapshot.buy_volume / (snapshot.buy_volume + snapshot.sell_volume) : 0.0;
+    feature_set.aggressor_ratio = aggressor_ratio;
 
-        // Handle edge case: All sizes equal
-        double dynamic_min = *std::min_element(sizes.begin(), sizes.end());
-        double dynamic_max = *std::max_element(sizes.begin(), sizes.end());
-        if (dynamic_max - dynamic_min < 1e-10) {
-            trade_size_entropy = 0.0;  // Perfect predictability
-            return;
-        }
 
-        // Clamp and ensure non-zero range
-        dynamic_min = std::max(dynamic_min, 1e-3);
-        if (dynamic_max <= dynamic_min) dynamic_max = dynamic_min + 1.0;
-
-        // Create logarithmic bins
-        std::vector<double> bin_edges(NUM_BINS + 1);
-        double log_min = std::log10(dynamic_min);
-        double log_max = std::log10(dynamic_max);
-        double log_step = (log_max - log_min) / NUM_BINS;
-        for (int i = 0; i <= NUM_BINS; ++i) {
-            bin_edges[i] = std::pow(10.0, log_min + i * log_step);
-        }
-
-        // Count bin frequencies (optimized with binary search)
-        std::vector<int> counts(NUM_BINS, 0);
-        for (double size : sizes) {
-            auto it = std::upper_bound(bin_edges.begin(), bin_edges.end(), size);
-            if (it != bin_edges.begin() && it != bin_edges.end()) {
-                counts[std::distance(bin_edges.begin(), it) - 1]++;
-            }
-        }
-
-        // Compute entropy
-        int total = std::accumulate(counts.begin(), counts.end(), 0);
-        if (total > 0) {
-            for (int count : counts) {
-                if (count > 0) {
-                    double p = static_cast<double>(count) / total;
-                    trade_size_entropy -= p * std::log2(p);
-                }
-            }
-        }
-    }
-
-    feature_set.trade_size_entropy = trade_size_entropy;
+    // --- Aggressor Bias ---
+    double aggressor_bias = (snapshot.buy_volume + snapshot.sell_volume > 0.0) ? 
+            (snapshot.buy_volume - snapshot.sell_volume) / (snapshot.buy_volume + snapshot.sell_volume) : 0.0;
+    feature_set.aggressor_bias = aggressor_bias;
 }
 
 
-// Order Book Imbalance, LOB Slopes for bid and ask: NO CACHE OBJECTS
-void FeatureProcessor::ProcessLiquidity(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
-    // Initialize with default values
-    feature_set.obi = 0.0;
-    feature_set.lob_bid_slope_mean = 0.0;
-    feature_set.lob_ask_slope_mean = 0.0;
-    
-    // --- Order Book Imbalance ---
-    if (snapshot.rolling_order_book_imbalances && !snapshot.rolling_order_book_imbalances->empty()) {
-        const auto& obis = *snapshot.rolling_order_book_imbalances;
-        feature_set.obi = std::accumulate(obis.begin(), obis.end(), 0.0) / static_cast<double>(obis.size());
-    }
-    
-    // --- LOB Slope Means ---
-    if (snapshot.rolling_lob_bid_slopes && !snapshot.rolling_lob_bid_slopes->empty() &&
-        snapshot.rolling_lob_ask_slopes && !snapshot.rolling_lob_ask_slopes->empty()) {
-            
-        const auto& bid_slopes = *snapshot.rolling_lob_bid_slopes;
-        const auto& ask_slopes = *snapshot.rolling_lob_ask_slopes;
-        
-        feature_set.lob_bid_slope_mean = std::accumulate(
-            bid_slopes.begin(), bid_slopes.end(), 0.0) / static_cast<double>(bid_slopes.size());
-            
-        feature_set.lob_ask_slope_mean = std::accumulate(
-            ask_slopes.begin(), ask_slopes.end(), 0.0) / static_cast<double>(ask_slopes.size());
-    }
-}
-
-// Tick Direction Entropy, Reversal Rate and Reversal Entropy, Aggressor Bias and Aggressor Ratio
-void FeatureProcessor::ProcessMicrostructureTransitions(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
+// Tick Direction Entropy, Trade Direction Entropy, Autocorrelation of Log Returns, Autocorrelation of Trade Directions, Skewness of Log Returns, Kurtosis of Log Returns
+void FeatureProcessor::ProcessRandomnessFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
     // Initialize with default values
     feature_set.tick_direction_entropy = 0.0;
-    feature_set.reversal_rate = 0.0;
-    feature_set.reversal_entropy = 0.0;
-    feature_set.aggressor_bias = 0.0;
-    feature_set.aggressor_ratio = 0.0;
+    feature_set.trade_direction_entropy = 0.0;
+    feature_set.autocor_log_return_1 = 0.0;
+    feature_set.autocor_log_return_3 = 0.0;
+    feature_set.autocor_log_return_5 = 0.0;
+    feature_set.autocor_trade_dir_1 = 0.0;
+    feature_set.autocor_trade_dir_3 = 0.0;
+    feature_set.autocor_trade_dir_5 = 0.0;
+    feature_set.skewness_log_returns = 0.0;
+    feature_set.kurtosis_log_returns = 0.0;
 
     // Check if required data is available
     if (!snapshot.rolling_midprices || snapshot.rolling_midprices->size() < 2) {
@@ -345,18 +304,38 @@ void FeatureProcessor::ProcessMicrostructureTransitions(const FeatureInputSnapsh
     if (p_down_up > 0) feature_set.reversal_entropy -= p_down_up * std::log2(p_down_up);
     if (p_up_up > 0) feature_set.reversal_entropy -= p_up_up * std::log2(p_up_up);
     if (p_down_down > 0) feature_set.reversal_entropy -= p_down_down * std::log2(p_down_down);
+}
+
+void FeatureProcessor::ProcessEngineeredFeatures(const FeatureInputSnapshot& snapshot, FeatureSet& feature_set) {
+    feature_set.sharpe_long_long = feature_set.ema_log_return_long_long / std::sqrt(feature_set.realized_variance_long_long);
+    feature_set.sharpe_long = feature_set.ema_log_return_long / std::sqrt(feature_set.realized_variance_long);
+    feature_set.sharpe_medium = feature_set.ema_log_return_medium / std::sqrt(feature_set.realized_variance_medium);
+    feature_set.sharpe_short = feature_set.ema_log_return_short / std::sqrt(feature_set.realized_variance_short);
+    feature_set.sharpe_short_short = feature_set.ema_log_return_short_short / std::sqrt(feature_set.realized_variance_short_short);
     
+    feature_set.directional_volatility_long_long = 1.0 - feature_set.down_volatility_long_long / feature_set.up_volatility_long_long;
+    feature_set.directional_volatility_long = 1.0 - feature_set.down_volatility_long / feature_set.up_volatility_long;
+    feature_set.directional_volatility_medium = 1.0 - feature_set.down_volatility_medium / feature_set.up_volatility_medium;
+    feature_set.directional_volatility_short = 1.0 - feature_set.down_volatility_short / feature_set.up_volatility_short;
+    feature_set.directional_volatility_short_short = 1.0 - feature_set.down_volatility_short_short / feature_set.up_volatility_short_short;
 
-    // --- Aggressor Ratio ---
-    double aggressor_ratio = (snapshot.buy_volume + snapshot.sell_volume > 0.0) ? 
-            snapshot.buy_volume / (snapshot.buy_volume + snapshot.sell_volume) : 0.0;
-    feature_set.aggressor_ratio = aggressor_ratio;
+    feature_set.midprice_deviation_long_long = 1.0 - feature_set.midprice / feature_set.ema_midprice_long_long;
+    feature_set.midprice_deviation_long = 1.0 - feature_set.midprice / feature_set.ema_midprice_long;
+    feature_set.midprice_deviation_medium = 1.0 - feature_set.midprice / feature_set.ema_midprice_medium;
+    feature_set.midprice_deviation_short = 1.0 - feature_set.midprice / feature_set.ema_midprice_short;
+    feature_set.midprice_deviation_short_short = 1.0 - feature_set.midprice / feature_set.ema_midprice_short_short;
 
+    feature_set.midprice_reversal_rate = feature_set.ema_log_return_short / feature_set.midprice_deviation_long_long;
 
-    // --- Aggressor Bias ---
-    double aggressor_bias = (snapshot.buy_volume + snapshot.sell_volume > 0.0) ? 
-            (snapshot.buy_volume - snapshot.sell_volume) / (snapshot.buy_volume + snapshot.sell_volume) : 0.0;
-    feature_set.aggressor_bias = aggressor_bias;
+    feature_set.ofi_ratio_medium_long = feature_set.ofi_medium / feature_set.ofi_long;
+    feature_set.ofi_ratio_short_long = feature_set.ofi_short / feature_set.ofi_long;
+    feature_set.ofi_ratio_short_medium = feature_set.ofi_short / feature_set.ofi_medium;
+
+    feature_set.trade_rate_diff = feature_set.trade_rate_long - feature_set.trade_rate_short;
+    feature_set.add_rate_diff = feature_set.add_rate_long - feature_set.add_rate_short;
+    feature_set.aggressor_ratio_diff = feature_set.aggressor_ratio_long - feature_set.aggressor_ratio_short;
+    feature_set.tick_direction_entropy_diff = feature_set.tick_direction_entropy_long - feature_set.tick_direction_entropy_short;
+    feature_set.trade_direction_entropy_diff = feature_set.trade_direction_entropy_long - feature_set.trade_direction_entropy_short;
 }
 
 } // namespace microregime

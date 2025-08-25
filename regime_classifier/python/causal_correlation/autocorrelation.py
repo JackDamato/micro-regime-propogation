@@ -11,7 +11,7 @@ from env import PROJECT_ROOT
 
 # === Load CSV ===
 def autocorrelation(date):
-    folder_name = "output_Snapshot0.50_Window30000_Events600"
+    folder_name = "output_Snapshot1.00_Window1000_Events300"
     FILE_PATH = PROJECT_ROOT + "\\data\\" + folder_name + "\\" + date + "\\base_SPY_norm.csv"
     df = pd.read_csv(FILE_PATH)
 
@@ -22,6 +22,11 @@ def autocorrelation(date):
     # === Summary Metrics ===
     summary = {
         "Lag-1 ρ": {},
+        "Lag-3 ρ": {},
+        "Lag-5 ρ": {},
+        "Lag-10 ρ": {},
+        "Lag-15 ρ": {},
+        "Lag-20 ρ": {},
         "Std": {},
         "Delta Std": {},
         "CoeffVar": {},
@@ -41,6 +46,11 @@ def autocorrelation(date):
         # Autocorrelation
         acf = [series.autocorr(lag) for lag in range(1, 21)]
         summary["Lag-1 ρ"][col] = acf[0]
+        summary["Lag-3 ρ"][col] = acf[2]
+        summary["Lag-5 ρ"][col] = acf[4]
+        summary["Lag-10 ρ"][col] = acf[9]
+        summary["Lag-15 ρ"][col] = acf[14]
+        summary["Lag-20 ρ"][col] = acf[19]
         
         # Standard deviation
         summary["Std"][col] = series.std()

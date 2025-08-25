@@ -54,8 +54,6 @@ public:
     // Market microstructure metrics
     double GetMidPrice() const;
     double GetSpread() const;
-    double GetOrderBookImbalance() const;
-    std::pair<double, double> GetLOBSlopes() const;
 
 private:
     // Internal helper methods
